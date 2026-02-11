@@ -12,6 +12,7 @@
     "check": "biome check",
     "auth:migrate": "pnpm dlx @better-auth/cli migrate",
     "auth:generate": "pnpm dlx @better-auth/cli generate",
+    "create-user": "tsx scripts/create-user.ts",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types"
