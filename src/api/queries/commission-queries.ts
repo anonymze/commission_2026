@@ -127,6 +127,8 @@ export const getAppUserCommissionsCodeQuery = createServerFn({
 		{
 			params: {
 				sort: "app_user.lastname",
+				limit: 100,
+				pagination: false,
 			},
 		},
 	);
@@ -201,7 +203,10 @@ export const getSupplierCommissionsColumnQuery = createServerFn({
 export const supplierCommissionsColumnQueryOptions = () =>
 	queryOptions({
 		queryKey: ["supplier-commissions-column"],
-		queryFn: () => getSupplierCommissionsColumnQuery({ data: {} }),
+		queryFn: () =>
+			getSupplierCommissionsColumnQuery({
+				data: { limit: 100, pagination: false },
+			}),
 	});
 
 export const createSupplierCommissionColumnQuery = createServerFn({

@@ -19,6 +19,6 @@ export const getAppUsersQuery = createServerFn({ method: "POST" }).handler(
 
 export const appUsersQueryOptions = () =>
 	queryOptions({
-		queryKey: ["users"],
+		queryKey: ["users", { limit: 100 }],
 		queryFn: getAppUsersQuery,
 	});

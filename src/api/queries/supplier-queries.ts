@@ -22,6 +22,6 @@ export const getSuppliersQuery = createServerFn({ method: "GET" }).handler(
 
 export const suppliersQueryOptions = () =>
 	queryOptions({
-		queryKey: ["suppliers"],
+		queryKey: ["suppliers", { limit: 100 }],
 		queryFn: getSuppliersQuery,
 	});
