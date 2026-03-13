@@ -64,7 +64,8 @@ type EntryType = CommissionImport["entry"];
 const commissionsImportQueryOptions = () =>
 	queryOptions({
 		queryKey: ["commissions-import", { limit: 100 }],
-		queryFn: () => getCommissionsImportQuery({ data: { limit: 100 } }),
+		queryFn: () =>
+			getCommissionsImportQuery({ data: { limit: 100, pagination: false } }),
 	});
 
 export const Route = createFileRoute("/_authed/import")({
