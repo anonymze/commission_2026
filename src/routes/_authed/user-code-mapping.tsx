@@ -60,7 +60,10 @@ export default function UsersCodeTab() {
 	const [supplierOpen, setSupplierOpen] = useState<Record<string, boolean>>({});
 	const [searchQuery, setSearchQuery] = useState("");
 	const [userCodeEntries, setUserCodeEntries] = useState<
-		Record<string, Array<{ id: string; code: string; supplier: string }>>
+		Record<
+			string,
+			Array<{ id: string; code: string; supplier: string; supplierName?: string }>
+		>
 	>({});
 	const [userAssociationIds, setUserAssociationIds] = useState<
 		Record<string, string>
@@ -142,6 +145,7 @@ export default function UsersCodeTab() {
 						id: `${userId}-${index}`,
 						code: codeItem.code,
 						supplier: codeItem.supplier?.id || "",
+						supplierName: codeItem.supplier?.name || "",
 					}));
 				}
 			});
@@ -508,7 +512,9 @@ export default function UsersCodeTab() {
 																			{entry.supplier
 																				? allSuppliers.find(
 																						(s) => s.id === entry.supplier,
-																					)?.name || "Fournisseur inconnu"
+																					)?.name ||
+																					entry.supplierName ||
+																					"Fournisseur inconnu"
 																				: "Sélectionner..."}
 																			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 																		</Button>
