@@ -63,8 +63,8 @@ type EntryType = CommissionImport["entry"];
 // Query options for SSR
 const commissionsImportQueryOptions = () =>
 	queryOptions({
-		queryKey: ["commissions-import", { limit: 0 }],
-		queryFn: getCommissionsImportQuery,
+		queryKey: ["commissions-import", { limit: 100 }],
+		queryFn: () => getCommissionsImportQuery({ data: { limit: 100 } }),
 	});
 
 export const Route = createFileRoute("/_authed/import")({

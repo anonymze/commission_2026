@@ -11,7 +11,8 @@ export const getSuppliersQuery = createServerFn({ method: "GET" }).handler(
 			{
 				params: {
 					sort: "name",
-					limit: 0,
+					limit: 100,
+					pagination: false,
 				},
 			},
 		);

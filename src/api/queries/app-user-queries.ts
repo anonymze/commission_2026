@@ -8,8 +8,9 @@ export const getAppUsersQuery = createServerFn({ method: "POST" }).handler(
 	async () => {
 		const response = await api.get<PaginatedResponse<User>>("/api/app-users", {
 			params: {
-				limit: 0,
+				limit: 100,
 				sort: "lastname",
+				pagination: false,
 			},
 		});
 		return response.data;
