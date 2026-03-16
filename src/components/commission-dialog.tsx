@@ -47,6 +47,12 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
 	commissionImportUserQueryOptions,
 	// createCommissionQuery,
 	updateCommissionSupplierQuery,
@@ -498,110 +504,114 @@ export default function CreateCommissionDialog({
 									</Card>
 
 									{/* Suppliers Tables */}
-									{modifiedSuppliers.map((supplier, supplierIndex) => {
-										const supplierProductionTotal = supplier.sheet_lines
-											.filter((line) => {
-												if (line.type) return line.type === "production";
-												return supplier.production > 0 || supplier.encours === 0;
-											})
-											.reduce((sum, line) => sum + line.amount, 0);
-										const supplierEncoursTotal = supplier.sheet_lines
-											.filter((line) => {
-												if (line.type) return line.type === "encours";
-												return supplier.encours > 0 && supplier.production === 0;
-											})
-											.reduce((sum, line) => sum + line.amount, 0);
+									<Accordion type="multiple" className="space-y-2">
+										{modifiedSuppliers.map((supplier, supplierIndex) => {
+											const supplierProductionTotal = supplier.sheet_lines
+												.filter((line) => {
+													if (line.type) return line.type === "production";
+													return supplier.production > 0 || supplier.encours === 0;
+												})
+												.reduce((sum, line) => sum + line.amount, 0);
+											const supplierEncoursTotal = supplier.sheet_lines
+												.filter((line) => {
+													if (line.type) return line.type === "encours";
+													return supplier.encours > 0 && supplier.production === 0;
+												})
+												.reduce((sum, line) => sum + line.amount, 0);
 
-										return (
-											<Card key={supplier.id}>
-												<CardHeader>
-													<CardTitle className="text-lg">
-														{supplier.supplier.name}
-													</CardTitle>
-													<div className="flex gap-4 text-sm">
-														<span>
-															Production:{" "}
-															<strong>
-																{supplierProductionTotal.toFixed(2)}€
-															</strong>
-														</span>
-														<span>
-															Encours:{" "}
-															<strong>{supplierEncoursTotal.toFixed(2)}€</strong>
-														</span>
-													</div>
-												</CardHeader>
-												<CardContent>
-													<Table>
-														<TableHeader>
-															<TableRow>
-																<TableHead>Ligne</TableHead>
-																<TableHead>Type</TableHead>
-																<TableHead>Sous-code</TableHead>
-																<TableHead>Vérification</TableHead>
-																<TableHead>Montant</TableHead>
-																<TableHead className="w-[100px]">
-																	Actions
-																</TableHead>
-															</TableRow>
-														</TableHeader>
-														<TableBody>
-															{supplier.sheet_lines.map((line) => {
-																const isProduction = line.type
-																	? line.type === "production"
-																	: supplier.production > 0 || supplier.encours === 0;
-																return (
-																	<TableRow
-																		key={`${supplier.id}-${line.rowIndex}`}
-																	>
-																		<TableCell>{line.rowIndex + 1}</TableCell>
-																		<TableCell>
-																			<span
-																				className={`font-semibold ${isProduction ? "text-red-600" : "text-blue-600"}`}
-																			>
-																				{isProduction ? "Production" : "Encours"}
-																			</span>
-																		</TableCell>
-																		<TableCell>{line.subcode}</TableCell>
-																		<TableCell className="max-w-[200px] truncate">
-																			{line.verificationKeyword}
-																		</TableCell>
-																	<TableCell>
-																		<Input
-																			type="number"
-																			step="0.01"
-																			value={line.amount}
-																			onChange={(e) =>
-																				handleAmountChange(
-																					supplierIndex,
-																					line.rowIndex,
-																					e.target.value,
-																				)
-																			}
-																			className="w-32"
-																		/>
-																	</TableCell>
-																	<TableCell>
-																		<Button
-																			type="button"
-																			variant="ghost"
-																			size="sm"
-																			onClick={() =>
-																				handleDeleteRow(supplierIndex, line.rowIndex)
-																			}
-																		>
-																			<Trash2 className="w-4 h-4 text-red-500" />
-																		</Button>
-																	</TableCell>
+											return (
+												<AccordionItem
+													key={supplier.id}
+													value={supplier.id}
+													className="border rounded-lg px-4 last:border-b"
+												>
+													<AccordionTrigger className="hover:no-underline">
+														<div className="flex items-center gap-6 text-left">
+															<span className="font-semibold">
+																{supplier.supplier.name}
+															</span>
+															<span className="text-sm text-muted-foreground">
+																Production:{" "}
+																<strong className="text-red-600">
+																	{supplierProductionTotal.toFixed(2)}€
+																</strong>
+															</span>
+															<span className="text-sm text-muted-foreground">
+																Encours:{" "}
+																<strong className="text-blue-600">
+																	{supplierEncoursTotal.toFixed(2)}€
+																</strong>
+															</span>
+															<span className="text-sm text-muted-foreground">
+																{supplier.sheet_lines.length} ligne
+																{supplier.sheet_lines.length !== 1 ? "s" : ""}
+															</span>
+														</div>
+													</AccordionTrigger>
+													<AccordionContent>
+														<Table>
+															<TableHeader>
+																<TableRow>
+																	<TableHead>Ligne</TableHead>
+																	<TableHead>Type</TableHead>
+																	<TableHead>Sous-code</TableHead>
+																	<TableHead>Vérification</TableHead>
+																	<TableHead>Montant</TableHead>
+																	<TableHead className="w-[100px]">Actions</TableHead>
 																</TableRow>
-																);
-															})}
-														</TableBody>
-													</Table>
-												</CardContent>
-											</Card>
-										);
-									})}
+															</TableHeader>
+															<TableBody>
+																{supplier.sheet_lines.map((line) => {
+																	const isProduction = line.type
+																		? line.type === "production"
+																		: supplier.production > 0 || supplier.encours === 0;
+																	return (
+																		<TableRow key={`${supplier.id}-${line.rowIndex}`}>
+																			<TableCell>{line.rowIndex + 1}</TableCell>
+																			<TableCell>
+																				<span className={`font-semibold ${isProduction ? "text-red-600" : "text-blue-600"}`}>
+																					{isProduction ? "Production" : "Encours"}
+																				</span>
+																			</TableCell>
+																			<TableCell>{line.subcode}</TableCell>
+																			<TableCell className="max-w-[200px] truncate">
+																				{line.verificationKeyword}
+																			</TableCell>
+																			<TableCell>
+																				<Input
+																					type="number"
+																					step="0.01"
+																					value={line.amount}
+																					onChange={(e) =>
+																						handleAmountChange(
+																							supplierIndex,
+																							line.rowIndex,
+																							e.target.value,
+																						)
+																					}
+																					className="w-32"
+																				/>
+																			</TableCell>
+																			<TableCell>
+																				<Button
+																					type="button"
+																					variant="ghost"
+																					size="sm"
+																					onClick={() => handleDeleteRow(supplierIndex, line.rowIndex)}
+																				>
+																					<Trash2 className="w-4 h-4 text-red-500" />
+																				</Button>
+																			</TableCell>
+																		</TableRow>
+																	);
+																})}
+															</TableBody>
+														</Table>
+													</AccordionContent>
+												</AccordionItem>
+											);
+										})}
+									</Accordion>
 								</>
 							)}
 					</div>

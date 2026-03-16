@@ -14,8 +14,10 @@ import { api, handleApiError } from "../_config";
 export const getCommissionsQuery = createServerFn({ method: "GET" }).handler(
 	async () => {
 		try {
-			const response =
-				await api.get<PaginatedResponse<Commission>>("/api/commissions");
+			const response = await api.get<PaginatedResponse<Commission>>(
+				"/api/commissions",
+				{ params: { limit: 100, pagination: false } },
+			);
 			return response.data;
 		} catch (error) {
 			handleApiError(error);
