@@ -259,11 +259,12 @@ export default function CreateCommissionDialog({
 	// Reset dialog state when closing
 	useEffect(() => {
 		if (!open) {
+			queryClient.removeQueries({ queryKey: ["commission-import-user"] });
 			setSelectedEmployeeId(null);
 			setModifiedSuppliers([]);
 			form.reset();
 		}
-	}, [open, form]);
+	}, [open, form, queryClient]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>

@@ -27,6 +27,7 @@ export const commissionsQueryOptions = () =>
 	queryOptions({
 		queryKey: ["commissions"],
 		queryFn: getCommissionsQuery,
+		staleTime: Infinity,
 	});
 
 export const createCommissionQuery = createServerFn({ method: "POST" })
@@ -116,7 +117,9 @@ export const commissionImportUserQueryOptions = (userId: string) =>
 		queryKey: ["commission-import-user", userId],
 		queryFn: () => getCommissionImportUserQuery({ data: userId }),
 		enabled: !!userId,
-		staleTime: 0, // Always refetch to get latest codes/imports
+		staleTime: Infinity,
+		refetchOnWindowFocus: false,
+		refetchOnMount: false,
 	});
 
 export const getAppUserCommissionsCodeQuery = createServerFn({
