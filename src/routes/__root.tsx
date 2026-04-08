@@ -25,6 +25,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     if (beforeLoadCtx.location.pathname === "/") {
       throw redirect({ to: "/dashboard" });
     }
+
+    // If middleware just created a bridge session, redirect to clean URL
+    const bridgeToken = (beforeLoadCtx.location.search as Record<string, string>).bridge_token;
+    if (bridgeToken) {
+      throw redirect({ to: "/dashboard" });
+    }
+
     const { userId } = await beforeLoadCtx.context.queryClient.ensureQueryData(
       sessionQueryOptions(),
     );

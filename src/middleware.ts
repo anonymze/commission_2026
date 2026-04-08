@@ -18,20 +18,13 @@ export const bridgeAuthMiddleware = createMiddleware().server(
     const url = new URL(request.url);
     const bridgeToken = url.searchParams.get("bridge_token");
 
-    console.log(
-      "[bridge] URL:",
-      url.pathname,
-      "| token:",
-      bridgeToken ?? "none",
-    );
-
     if (!bridgeToken) return next();
 
-    const existingSession = getCookie("better-auth.session_token");
-    console.log("[bridge] existing session:", existingSession ?? "none");
+    const existingSession =
+      getCookie("__Secure-better-auth.session_token") ||
+      getCookie("better-auth.session_token");
     if (existingSession) return next();
 
-    console.log("[bridge] validating token against Payload...");
     const res = await fetch(
       `${PAYLOAD_API_URL}/api/auth-bridge-tokens/validate`,
       {
@@ -41,15 +34,9 @@ export const bridgeAuthMiddleware = createMiddleware().server(
       },
     );
 
-    console.log("[bridge] Payload response status:", res.status);
-    if (!res.ok) {
-      console.log("[bridge] validation failed, skipping");
-      return next();
-    }
+    if (!res.ok) return next();
 
     const admin = await res.json();
-    console.log("[bridge] admin found:", admin.email);
-
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
     try {
@@ -58,7 +45,6 @@ export const bridgeAuthMiddleware = createMiddleware().server(
         [admin.email],
       );
       const user = userResult.rows[0];
-      console.log("[bridge] better-auth user:", user?.id ?? "NOT FOUND");
       if (!user) return next();
 
       const sessionToken = crypto.randomUUID();
@@ -69,28 +55,25 @@ export const bridgeAuthMiddleware = createMiddleware().server(
         'INSERT INTO "session" (id, "userId", "expiresAt", token, "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5, $6)',
         [crypto.randomUUID(), user.id, expiresAt, sessionToken, now, now],
       );
-      console.log("[bridge] session created, token:", sessionToken);
 
-      const signedToken = signToken(
-        sessionToken,
-        process.env.BETTER_AUTH_SECRET!,
-      );
+      const signedToken = signToken(sessionToken, process.env.BETTER_AUTH_SECRET!);
 
-      setCookie("better-auth.session_token", signedToken, {
+      const cookieName = process.env.NODE_ENV === "production"
+        ? "__Secure-better-auth.session_token"
+        : "better-auth.session_token";
+
+      setCookie(cookieName, signedToken, {
         path: "/",
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 60,
       });
-      console.log("[bridge] signed cookie set");
-    } catch (err) {
-      console.error("[bridge] error:", err);
+
+      // Pass userId via context so beforeLoad can skip session check
+      return next({ context: { bridgeUserId: user.id } });
     } finally {
       await pool.end();
-      console.log("[bridge] pool closed");
     }
-
-    return next();
   },
 );
