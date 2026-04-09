@@ -618,14 +618,7 @@ export default function CreateCommissionDialog({
 
 					{/* Action Buttons */}
 					<div className="flex items-center justify-between p-4 border-t bg-gray-50">
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => onOpenChange(false)}
-						>
-							<X className="w-4 h-4 mr-2" />
-							Fermer
-						</Button>
+
 						<Button
 							type="submit"
 							disabled={
@@ -646,6 +639,14 @@ export default function CreateCommissionDialog({
 									Mettre à jour
 								</>
 							)}
+            </Button>
+            <Button
+							type="button"
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+						>
+							<X className="w-4 h-4 mr-2" />
+							Fermer
 						</Button>
 					</div>
 				</form>
