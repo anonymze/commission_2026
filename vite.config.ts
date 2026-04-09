@@ -2,8 +2,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { cloudflare } from '@cloudflare/vite-plugin'
-// import { nitro } from "nitro/vite";
+// import { cloudflare } from '@cloudflare/vite-plugin'
+import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
@@ -17,9 +17,9 @@ const config = defineConfig(({ mode }) => ({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
-    // Only enable cloudflare plugin in build mode to avoid dev conflicts
-    ...(mode === 'production' ? [cloudflare({ viteEnvironment: { name: 'ssr' } })] : []),
-    // nitro(), // Commented: experimental, conflicts with TanStack Start manifest plugin
+    // cloudflare plugin disabled for Railway hosting
+    // ...(mode === 'production' ? [cloudflare({ viteEnvironment: { name: 'ssr' } })] : []),
+    nitro(),
   ],
   // nitro: {
   //   preset: "vercel"
