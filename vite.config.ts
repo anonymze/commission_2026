@@ -7,7 +7,7 @@ import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 
-const config = defineConfig(({ mode }) => ({
+const config = defineConfig(() => ({
   plugins: [
     devtools(),
     // this is the plugin that enables path aliases
