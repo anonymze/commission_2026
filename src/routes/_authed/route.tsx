@@ -77,7 +77,7 @@ function RouteComponent() {
 							}}
 						>
 							<UploadIcon className="w-4 h-4" />
-							Importer les fichiers de commissions
+							Importer
 						</TabsTrigger>
 						<TabsTrigger
 							value="users"
@@ -87,7 +87,7 @@ function RouteComponent() {
 							}}
 						>
 							<CodeIcon className="w-4 h-4" />
-							Mapping des codes utilisateurs
+							Codes utilisateurs
 						</TabsTrigger>
 						<TabsTrigger
 							value="suppliers"
@@ -97,7 +97,7 @@ function RouteComponent() {
 							}}
 						>
 							<CodeIcon className="w-4 h-4" />
-							Mapping des colonnes fournisseurs
+							Colonnes des fournisseurs
 						</TabsTrigger>
 					</TabsList>
 				</Tabs>
