@@ -468,7 +468,8 @@ function UsersCodeTab() {
 													)}
 												</div>
 											) : (
-												(userCodeEntries[userId] || []).map((entry) => (
+												<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+												{(userCodeEntries[userId] || []).map((entry) => (
 													<div
 														key={entry.id}
 														className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:border-blue-300 transition-colors"
@@ -578,7 +579,8 @@ function UsersCodeTab() {
 															</Button>
 														</div>
 													</div>
-												))
+												))}
+											</div>
 											)}
 										</div>
 

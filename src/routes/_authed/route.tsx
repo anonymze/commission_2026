@@ -4,8 +4,9 @@ import {
 	redirect,
 	useMatchRoute,
 	useRouter,
+	useRouterState,
 } from "@tanstack/react-router";
-import { CalculatorIcon, CodeIcon, LogOutIcon, UploadIcon } from "lucide-react";
+import { CalculatorIcon, CodeIcon, Loader2, LogOutIcon, UploadIcon } from "lucide-react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,8 @@ function RouteComponent() {
 	const { queryClient } = Route.useRouteContext();
 	const router = useRouter();
 	const matchRoute = useMatchRoute();
+	const isRouterLoading = useRouterState({ select: (s) => s.isLoading });
+	const [pendingTab, setPendingTab] = React.useState<string | null>(null);
 
 	async function logout() {
 		console.log("ici")
@@ -38,6 +41,12 @@ function RouteComponent() {
 				: router.matchRoute({ to: "/supplier-column-mapping" })
 					? "suppliers"
 					: "commissions";
+
+	React.useEffect(() => {
+		if (!isRouterLoading) setPendingTab(null);
+	}, [isRouterLoading]);
+
+	const displayTab = pendingTab ?? activeTab;
 
 	return (
 		<React.Fragment>
@@ -57,46 +66,66 @@ function RouteComponent() {
 					</div>
 				</div>
 
-				<Tabs value={activeTab} className="space-y-6">
+				<Tabs value={displayTab} className="space-y-6">
 					<TabsList className="grid w-full grid-cols-4">
 						<TabsTrigger
 							value="commissions"
 							className="flex items-center gap-2 text-blue-700"
 							onClick={() => {
+								setPendingTab("commissions");
 								router.navigate({ to: "/dashboard" });
 							}}
 						>
-							<CalculatorIcon className="w-4 h-4" />
+							{pendingTab === "commissions" && isRouterLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<CalculatorIcon className="w-4 h-4" />
+							)}
 							Commissions
 						</TabsTrigger>
 						<TabsTrigger
 							value="import"
 							className="flex items-center gap-2 text-amber-700"
 							onClick={() => {
+								setPendingTab("import");
 								router.navigate({ to: "/import" });
 							}}
 						>
-							<UploadIcon className="w-4 h-4" />
+							{pendingTab === "import" && isRouterLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<UploadIcon className="w-4 h-4" />
+							)}
 							Importer
 						</TabsTrigger>
 						<TabsTrigger
 							value="users"
 							className="flex items-center gap-2"
 							onClick={() => {
+								setPendingTab("users");
 								router.navigate({ to: "/user-code-mapping" });
 							}}
 						>
-							<CodeIcon className="w-4 h-4" />
+							{pendingTab === "users" && isRouterLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<CodeIcon className="w-4 h-4" />
+							)}
 							Codes utilisateurs
 						</TabsTrigger>
 						<TabsTrigger
 							value="suppliers"
 							className="flex items-center gap-2"
 							onClick={() => {
+								setPendingTab("suppliers");
 								router.navigate({ to: "/supplier-column-mapping" });
 							}}
 						>
-							<CodeIcon className="w-4 h-4" />
+							{pendingTab === "suppliers" && isRouterLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<CodeIcon className="w-4 h-4" />
+							)}
 							Colonnes des fournisseurs
 						</TabsTrigger>
 					</TabsList>
