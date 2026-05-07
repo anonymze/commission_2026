@@ -54,7 +54,7 @@ export const Route = createFileRoute("/_authed/user-code-mapping")({
 	pendingComponent: () => <TabSkeleton />,
 });
 
-export default function UsersCodeTab() {
+function UsersCodeTab() {
 	const { queryClient } = Route.useRouteContext();
 	const [open, setOpen] = useState(false);
 	const [supplierOpen, setSupplierOpen] = useState<Record<string, boolean>>({});
@@ -267,15 +267,8 @@ export default function UsersCodeTab() {
 		});
 	};
 
-	const getAvailableSuppliers = (userId: string, currentEntryId: string) => {
-		const userEntries = userCodeEntries[userId] || [];
-		const usedSupplierIds = userEntries
-			.filter((entry) => entry.id !== currentEntryId && entry.supplier)
-			.map((entry) => entry.supplier);
-
-		return allSuppliers.filter(
-			(supplier) => !usedSupplierIds.includes(supplier.id),
-		);
+	const getAvailableSuppliers = (_userId: string, _currentEntryId: string) => {
+		return allSuppliers;
 	};
 
 	const saveUserCode = (userId: string) => {

@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authed")({
 	component: RouteComponent,
 });
 
-export function RouteComponent() {
+function RouteComponent() {
 	const { queryClient } = Route.useRouteContext();
 	const router = useRouter();
 	const matchRoute = useMatchRoute();
