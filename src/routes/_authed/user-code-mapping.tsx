@@ -267,8 +267,15 @@ function UsersCodeTab() {
 		});
 	};
 
-	const getAvailableSuppliers = (_userId: string, _currentEntryId: string) => {
-		return allSuppliers;
+	const getAvailableSuppliers = (userId: string, currentEntryId: string) => {
+		const userEntries = userCodeEntries[userId] || [];
+		const usedSupplierIds = userEntries
+			.filter((entry) => entry.id !== currentEntryId && entry.supplier)
+			.map((entry) => entry.supplier);
+
+		return allSuppliers.filter(
+			(supplier) => !usedSupplierIds.includes(supplier.id),
+		);
 	};
 
 	const saveUserCode = (userId: string) => {
@@ -300,11 +307,17 @@ function UsersCodeTab() {
 		createUserCodeMutation.mutate({
 			data: {
 				app_user: userId,
-				code: entries.map((entry) => ({
-					code: entry.code.trim(),
-					id: null,
-					supplier: entry.supplier,
-				})),
+				code: entries.flatMap((entry) =>
+					entry.code
+						.split("/")
+						.map((c) => c.trim())
+						.filter((c) => c.length > 0)
+						.map((c) => ({
+							code: c,
+							id: null,
+							supplier: entry.supplier,
+						})),
+				),
 			},
 		});
 	};
@@ -424,6 +437,9 @@ function UsersCodeTab() {
 													{userEmail}
 												</span>
 											)}
+											<p className="text-red-800 text-sm">
+												Séparez les multiples codes pour un même fournisseur par un "/". Ex : ABC/DEF/GHI
+											</p>
 										</div>
 
 										{/* Code Entries */}
@@ -464,7 +480,7 @@ function UsersCodeTab() {
 																	Code
 																</Label>
 																<Input
-																	placeholder="Ex: ABC123"
+																	placeholder="Ex: ABC123 ou ABC/DEF/GHI"
 																	value={entry.code}
 																	onChange={(e) =>
 																		updateCodeEntry(
