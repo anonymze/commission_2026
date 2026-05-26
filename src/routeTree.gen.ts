@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteRouteImport } from './routes/_authed/route'
 import { Route as AuthedUserCodeMappingRouteImport } from './routes/_authed/user-code-mapping'
 import { Route as AuthedSupplierColumnMappingRouteImport } from './routes/_authed/supplier-column-mapping'
+import { Route as AuthedRetrocessionRouteImport } from './routes/_authed/retrocession'
 import { Route as AuthedImportRouteImport } from './routes/_authed/import'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -37,6 +38,11 @@ const AuthedSupplierColumnMappingRoute =
     path: '/supplier-column-mapping',
     getParentRoute: () => AuthedRouteRoute,
   } as any)
+const AuthedRetrocessionRoute = AuthedRetrocessionRouteImport.update({
+  id: '/retrocession',
+  path: '/retrocession',
+  getParentRoute: () => AuthedRouteRoute,
+} as any)
 const AuthedImportRoute = AuthedImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/import': typeof AuthedImportRoute
+  '/retrocession': typeof AuthedRetrocessionRoute
   '/supplier-column-mapping': typeof AuthedSupplierColumnMappingRoute
   '/user-code-mapping': typeof AuthedUserCodeMappingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/import': typeof AuthedImportRoute
+  '/retrocession': typeof AuthedRetrocessionRoute
   '/supplier-column-mapping': typeof AuthedSupplierColumnMappingRoute
   '/user-code-mapping': typeof AuthedUserCodeMappingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/import': typeof AuthedImportRoute
+  '/_authed/retrocession': typeof AuthedRetrocessionRoute
   '/_authed/supplier-column-mapping': typeof AuthedSupplierColumnMappingRoute
   '/_authed/user-code-mapping': typeof AuthedUserCodeMappingRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/import'
+    | '/retrocession'
     | '/supplier-column-mapping'
     | '/user-code-mapping'
     | '/api/auth/$'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/import'
+    | '/retrocession'
     | '/supplier-column-mapping'
     | '/user-code-mapping'
     | '/api/auth/$'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authed/dashboard'
     | '/_authed/import'
+    | '/_authed/retrocession'
     | '/_authed/supplier-column-mapping'
     | '/_authed/user-code-mapping'
     | '/api/auth/$'
@@ -147,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSupplierColumnMappingRouteImport
       parentRoute: typeof AuthedRouteRoute
     }
+    '/_authed/retrocession': {
+      id: '/_authed/retrocession'
+      path: '/retrocession'
+      fullPath: '/retrocession'
+      preLoaderRoute: typeof AuthedRetrocessionRouteImport
+      parentRoute: typeof AuthedRouteRoute
+    }
     '/_authed/import': {
       id: '/_authed/import'
       path: '/import'
@@ -174,6 +193,7 @@ declare module '@tanstack/react-router' {
 interface AuthedRouteRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedImportRoute: typeof AuthedImportRoute
+  AuthedRetrocessionRoute: typeof AuthedRetrocessionRoute
   AuthedSupplierColumnMappingRoute: typeof AuthedSupplierColumnMappingRoute
   AuthedUserCodeMappingRoute: typeof AuthedUserCodeMappingRoute
 }
@@ -181,6 +201,7 @@ interface AuthedRouteRouteChildren {
 const AuthedRouteRouteChildren: AuthedRouteRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedImportRoute: AuthedImportRoute,
+  AuthedRetrocessionRoute: AuthedRetrocessionRoute,
   AuthedSupplierColumnMappingRoute: AuthedSupplierColumnMappingRoute,
   AuthedUserCodeMappingRoute: AuthedUserCodeMappingRoute,
 }

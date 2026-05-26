@@ -23,7 +23,6 @@ import { TabSkeleton } from "@/components/tab-skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-
 	Card,
 	CardContent,
 	CardDescription,
@@ -178,8 +177,10 @@ function RouteComponent() {
 
 			toast.success("Commission exportée avec succès");
 		},
-		onError: () => {
-			toast.error("Erreur lors de l'exportation de la commission");
+		onError: (error) => {
+			toast.error(
+				error.message || "Erreur lors de l'exportation de la commission",
+			);
 		},
 	});
 
@@ -295,7 +296,10 @@ function RouteComponent() {
 											</TableCell>
 											<TableCell className="px-5 font-semibold text-red-600">
 												{commission.commission_suppliers
-													.reduce((cum, item) => cum + (item.production || 0), 0)
+													.reduce(
+														(cum, item) => cum + (item.production || 0),
+														0,
+													)
 													.toFixed(2)}
 												€
 											</TableCell>

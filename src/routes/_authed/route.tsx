@@ -6,7 +6,14 @@ import {
 	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
-import { CalculatorIcon, CodeIcon, Loader2, LogOutIcon, UploadIcon } from "lucide-react";
+import {
+	BadgePercentIcon,
+	CalculatorIcon,
+	CodeIcon,
+	Loader2,
+	LogOutIcon,
+	UploadIcon,
+} from "lucide-react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +34,7 @@ function RouteComponent() {
 	const [pendingTab, setPendingTab] = React.useState<string | null>(null);
 
 	async function logout() {
-		console.log("ici")
+		console.log("ici");
 		await logoutLogic({ queryClient });
 		router.invalidate();
 	}
@@ -40,7 +47,9 @@ function RouteComponent() {
 				? "users"
 				: router.matchRoute({ to: "/supplier-column-mapping" })
 					? "suppliers"
-					: "commissions";
+					: router.matchRoute({ to: "/retrocession" })
+						? "retrocession"
+						: "commissions";
 
 	React.useEffect(() => {
 		if (!isRouterLoading) setPendingTab(null);
@@ -67,7 +76,7 @@ function RouteComponent() {
 				</div>
 
 				<Tabs value={displayTab} className="space-y-6">
-					<TabsList className="grid w-full grid-cols-4">
+					<TabsList className="grid w-full grid-cols-5">
 						<TabsTrigger
 							value="commissions"
 							className="flex items-center gap-2 text-blue-700"
@@ -127,6 +136,21 @@ function RouteComponent() {
 								<CodeIcon className="w-4 h-4" />
 							)}
 							Colonnes des fournisseurs
+						</TabsTrigger>
+						<TabsTrigger
+							value="retrocession"
+							className="flex items-center gap-2"
+							onClick={() => {
+								setPendingTab("retrocession");
+								router.navigate({ to: "/retrocession" });
+							}}
+						>
+							{pendingTab === "retrocession" && isRouterLoading ? (
+								<Loader2 className="w-4 h-4 animate-spin" />
+							) : (
+								<BadgePercentIcon className="w-4 h-4" />
+							)}
+							Rétrocession
 						</TabsTrigger>
 					</TabsList>
 				</Tabs>

@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 **Development**
-- `npm run dev` - dev server on port 3000
+- `npm run dev` - dev server on port 3333
 - `npm run build` - production build
 - `npm run serve` - preview production build
 
@@ -48,7 +48,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Example: `messagesCollection` with `localOnlyCollectionOptions`
 
 **Path Aliases**
-- `@/*` maps to `src/*` (configured in tsconfig.json + vite-tsconfig-paths)
+- `@/*` maps to `src/*`
 - shadcn imports: `@/components/ui/*`, `@/lib/utils`
 
 **Root Route** (`src/routes/__root.tsx`)

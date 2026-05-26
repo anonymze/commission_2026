@@ -8,6 +8,7 @@ import type {
 	SuppliersCommissionsColumn,
 } from "@/types/commission";
 import type { PaginatedResponse } from "@/types/response";
+import type { Retrocession, RetrocessionPayload } from "@/types/retrocession";
 import type { Supplier } from "@/types/supplier";
 import { api, handleApiError } from "../_config";
 
@@ -67,7 +68,7 @@ export const getCommissionExportQuery = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data: { commissionId, email } }) => {
 		const url = email
-			? `${process.env.API_URL}/api/commissions/export/${commissionId}?email=${email}`
+			? `${process.env.API_URL}/api/commissions/export/${commissionId}?email=${encodeURIComponent(email)}`
 			: `${process.env.API_URL}/api/commissions/export/${commissionId}`;
 
 		const response = await fetch(url, {
@@ -77,7 +78,23 @@ export const getCommissionExportQuery = createServerFn({ method: "POST" })
 		});
 
 		if (!response.ok) {
-			throw new Error("Export failed");
+			let message = "Erreur lors de l'exportation de la commission";
+			const contentType = response.headers.get("content-type") || "";
+
+			if (contentType.includes("application/json")) {
+				const body: unknown = await response.json().catch(() => null);
+
+				if (
+					body &&
+					typeof body === "object" &&
+					"message" in body &&
+					typeof body.message === "string"
+				) {
+					message = body.message;
+				}
+			}
+
+			throw new Error(message);
 		}
 
 		// If email sent, no download needed
@@ -91,8 +108,59 @@ export const getCommissionExportQuery = createServerFn({ method: "POST" })
 
 		return {
 			base64,
-			contentType: response.headers.get("content-type") || "application/octet-stream",
+			contentType:
+				response.headers.get("content-type") || "application/octet-stream",
 		};
+	});
+
+export const getRetrocessionsQuery = createServerFn({ method: "GET" }).handler(
+	async () => {
+		const response = await api.get<PaginatedResponse<Retrocession>>(
+			"/api/retrocessions",
+			{
+				params: {
+					limit: 100,
+					pagination: false,
+					sort: "app_user.lastname",
+					depth: 1,
+				},
+			},
+		);
+		return response.data;
+	},
+);
+
+export const retrocessionsQueryOptions = () =>
+	queryOptions({
+		queryKey: ["retrocessions"],
+		queryFn: getRetrocessionsQuery,
+	});
+
+export const createRetrocessionQuery = createServerFn({ method: "POST" })
+	.inputValidator((data: RetrocessionPayload) => data)
+	.handler(async ({ data }) => {
+		const response = await api.post("/api/retrocessions", data);
+		return response.data;
+	});
+
+export const updateRetrocessionQuery = createServerFn({ method: "POST" })
+	.inputValidator(
+		(data: RetrocessionPayload & { retrocessionId: Retrocession["id"] }) =>
+			data,
+	)
+	.handler(async ({ data }) => {
+		const response = await api.patch(
+			`/api/retrocessions/${data.retrocessionId}`,
+			data,
+		);
+		return response.data;
+	});
+
+export const deleteRetrocessionQuery = createServerFn({ method: "POST" })
+	.inputValidator((retrocessionId: Retrocession["id"]) => retrocessionId)
+	.handler(async ({ data: retrocessionId }) => {
+		const response = await api.delete(`/api/retrocessions/${retrocessionId}`);
+		return response.data;
 	});
 
 export const getCommissionImportUserQuery = createServerFn({ method: "GET" })
