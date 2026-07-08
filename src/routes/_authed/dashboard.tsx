@@ -37,6 +37,15 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -45,6 +54,44 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { debounce } from "@/lib/utils";
+import type { User } from "@/types/user";
+
+// resolve app-user ids whose email / name matches the search term
+function matchUserIds(users: User[], filter: string): string[] {
+	const q = filter.trim().toLowerCase();
+	return users
+		.filter((u) => {
+			const email = u.email?.toLowerCase() || "";
+			const firstName = u.firstname?.toLowerCase() || "";
+			const lastName = u.lastname?.toLowerCase() || "";
+			return (
+				email.includes(q) ||
+				firstName.includes(q) ||
+				lastName.includes(q) ||
+				`${firstName} ${lastName}`.includes(q) ||
+				`${lastName} ${firstName}`.includes(q)
+			);
+		})
+		.map((u) => u.id);
+}
+
+// build page items with ellipsis for large page counts
+function getPageItems(
+	current: number,
+	total: number,
+): (number | "gap-left" | "gap-right")[] {
+	if (total <= 7) {
+		return Array.from({ length: total }, (_, i) => i + 1);
+	}
+	const items: (number | "gap-left" | "gap-right")[] = [1];
+	const left = Math.max(2, current - 1);
+	const right = Math.min(total - 1, current + 1);
+	if (left > 2) items.push("gap-left");
+	for (let i = left; i <= right; i++) items.push(i);
+	if (right < total - 1) items.push("gap-right");
+	items.push(total);
+	return items;
+}
 
 const commissionSearchSchema = z.object({
 	page: z.number().catch(1).default(1),
@@ -57,12 +104,22 @@ const commissionSearchSchema = z.object({
 export const Route = createFileRoute("/_authed/dashboard")({
 	component: RouteComponent,
 	validateSearch: commissionSearchSchema,
-	loader: async ({ context }) => {
+	loaderDeps: ({ search: { page, filter, sort } }) => ({ page, filter, sort }),
+	loader: async ({ context, deps }) => {
 		try {
-			await Promise.all([
-				context.queryClient.ensureQueryData(commissionsQueryOptions()),
-				context.queryClient.ensureQueryData(appUsersQueryOptions()),
-			]);
+			const users = await context.queryClient.ensureQueryData(
+				appUsersQueryOptions(),
+			);
+			const userIds = deps.filter
+				? matchUserIds(users.docs, deps.filter)
+				: undefined;
+			await context.queryClient.ensureQueryData(
+				commissionsQueryOptions({
+					page: deps.page,
+					sort: deps.sort,
+					userIds,
+				}),
+			);
 		} catch (error) {
 			console.error("Dashboard loader error:", error);
 			// Let error boundary handle it instead of crashing stream
@@ -88,10 +145,25 @@ export const Route = createFileRoute("/_authed/dashboard")({
 
 function RouteComponent() {
 	const { queryClient } = Route.useRouteContext();
-	const { data, isFetching } = useSuspenseQuery(commissionsQueryOptions());
 	const { data: usersData } = useSuspenseQuery(appUsersQueryOptions());
 	const navigate = Route.useNavigate();
 	const search = Route.useSearch();
+
+	// server-side pagination: resolve matching users, fetch that page (10/page)
+	const userIds = search.filter
+		? matchUserIds(usersData.docs, search.filter)
+		: undefined;
+	const { data } = useSuspenseQuery(
+		commissionsQueryOptions({
+			page: search.page,
+			sort: search.sort,
+			userIds,
+		}),
+	);
+
+	const totalPages = data.totalPages;
+	const currentPage = data.page;
+	const totalCount = data.totalDocs;
 
 	const [localFilter, setLocalFilter] = React.useState(search.filter);
 	const [showCreateDialog, setShowCreateDialog] = React.useState(false);
@@ -101,10 +173,11 @@ function RouteComponent() {
 		setLocalFilter(search.filter);
 	}, [search.filter]);
 
-	// Handle page navigation
+	// Handle page navigation (clamped to valid range)
 	const handlePageChange = (newPage: number) => {
+		const clamped = Math.min(Math.max(newPage, 1), totalPages);
 		navigate({
-			search: (prev) => ({ ...prev, page: newPage }),
+			search: (prev) => ({ ...prev, page: clamped }),
 		});
 	};
 
@@ -184,25 +257,6 @@ function RouteComponent() {
 		},
 	});
 
-	// Filter data based on local filter (immediate UI update)
-	const filteredData = {
-		...data,
-		docs: data.docs.filter((commission) => {
-			const searchLower = localFilter.toLowerCase();
-			const email = commission.app_user?.email?.toLowerCase() || "";
-			const firstName = commission.app_user?.firstname?.toLowerCase() || "";
-			const lastName = commission.app_user?.lastname?.toLowerCase() || "";
-
-			return (
-				email.includes(searchLower) ||
-				firstName.includes(searchLower) ||
-				lastName.includes(searchLower) ||
-				`${firstName} ${lastName}`.includes(searchLower) ||
-				`${lastName} ${firstName}`.includes(searchLower)
-			);
-		}),
-	};
-
 	return (
 		<div>
 			<Card>
@@ -263,10 +317,10 @@ function RouteComponent() {
 					</div>
 
 					{/* Table or No Results */}
-					{filteredData.docs.length === 0 && localFilter ? (
+					{data.docs.length === 0 && search.filter ? (
 						<div className="p-6 flex items-center justify-center">
 							<p className="text-gray-600">
-								Aucun résultat trouvé pour "{localFilter}"
+								Aucun résultat trouvé pour "{search.filter}"
 							</p>
 						</div>
 					) : (
@@ -285,7 +339,7 @@ function RouteComponent() {
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{filteredData.docs.map((commission) => (
+									{data.docs.map((commission) => (
 										<TableRow key={commission.id}>
 											<TableCell className="font-medium px-5">
 												{commission.app_user.email}
@@ -379,34 +433,67 @@ function RouteComponent() {
 					)}
 
 					{/* Pagination */}
-					{data.totalPages > 1 && (
-						<div className="flex items-center justify-between">
+					{totalPages > 1 && (
+						<div className="flex flex-col sm:flex-row items-center justify-between gap-4">
 							<p className="text-sm text-muted-foreground">
-								Affichage de {(data.page - 1) * data.limit + 1} à{" "}
-								{Math.min(data.page * data.limit, data.totalDocs)} sur{" "}
-								{data.totalDocs} commissions
+								Affichage de {(currentPage - 1) * data.limit + 1} à{" "}
+								{Math.min(currentPage * data.limit, totalCount)} sur{" "}
+								{totalCount} commissions
 							</p>
-							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => handlePageChange(search.page - 1)}
-									disabled={!data.hasPrevPage || isFetching}
-								>
-									Précédent
-								</Button>
-								<span className="flex items-center px-3 text-sm">
-									Page {data.page} sur {data.totalPages}
-								</span>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => handlePageChange(search.page + 1)}
-									disabled={!data.hasNextPage || isFetching}
-								>
-									Suivant
-								</Button>
-							</div>
+							<Pagination className="mx-0 w-auto justify-end">
+								<PaginationContent>
+									<PaginationItem>
+										<PaginationPrevious
+											href="#"
+											aria-disabled={currentPage === 1}
+											className={
+												currentPage === 1
+													? "pointer-events-none opacity-50"
+													: undefined
+											}
+											onClick={(e) => {
+												e.preventDefault();
+												handlePageChange(currentPage - 1);
+											}}
+										/>
+									</PaginationItem>
+									{getPageItems(currentPage, totalPages).map((item) =>
+										typeof item !== "number" ? (
+											<PaginationItem key={item}>
+												<PaginationEllipsis />
+											</PaginationItem>
+										) : (
+											<PaginationItem key={item}>
+												<PaginationLink
+													href="#"
+													isActive={item === currentPage}
+													onClick={(e) => {
+														e.preventDefault();
+														handlePageChange(item);
+													}}
+												>
+													{item}
+												</PaginationLink>
+											</PaginationItem>
+										),
+									)}
+									<PaginationItem>
+										<PaginationNext
+											href="#"
+											aria-disabled={currentPage === totalPages}
+											className={
+												currentPage === totalPages
+													? "pointer-events-none opacity-50"
+													: undefined
+											}
+											onClick={(e) => {
+												e.preventDefault();
+												handlePageChange(currentPage + 1);
+											}}
+										/>
+									</PaginationItem>
+								</PaginationContent>
+							</Pagination>
 						</div>
 					)}
 				</CardContent>

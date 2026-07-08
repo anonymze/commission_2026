@@ -12,26 +12,54 @@ import type { Retrocession, RetrocessionPayload } from "@/types/retrocession";
 import type { Supplier } from "@/types/supplier";
 import { api, handleApiError } from "../_config";
 
-export const getCommissionsQuery = createServerFn({ method: "GET" }).handler(
-	async () => {
+export const COMMISSIONS_PAGE_SIZE = 10;
+
+const COMMISSIONS_SORT_MAP: Record<string, string> = {
+	newest: "-date",
+	oldest: "date",
+	price: "-date",
+};
+
+export const getCommissionsQuery = createServerFn({ method: "GET" })
+	.inputValidator(
+		(data: { page: number; sort: string; userIds?: string[] }) => data,
+	)
+	.handler(async ({ data: { page, sort, userIds } }) => {
 		try {
+			// build the Payload query string by hand (redaxios doesn't serialize
+			// nested `where` objects, so we pass the full query string)
+			const params = new URLSearchParams();
+			params.set("limit", String(COMMISSIONS_PAGE_SIZE));
+			params.set("page", String(page));
+			params.set("sort", COMMISSIONS_SORT_MAP[sort] ?? "-date");
+			if (userIds) {
+				// empty match -> sentinel id so the query returns nothing
+				params.set(
+					"where[app_user][in]",
+					userIds.length
+						? userIds.join(",")
+						: "00000000-0000-0000-0000-000000000000",
+				);
+			}
+
 			const response = await api.get<PaginatedResponse<Commission>>(
-				"/api/commissions",
-				{ params: { limit: 100, pagination: false } },
+				`/api/commissions?${params.toString()}`,
 			);
 			return response.data;
 		} catch (error) {
 			handleApiError(error);
 		}
-	},
-);
-
-export const commissionsQueryOptions = () =>
-	queryOptions({
-		queryKey: ["commissions"],
-		queryFn: getCommissionsQuery,
-		staleTime: Infinity,
 	});
+
+export const commissionsQueryOptions = (
+	params: { page?: number; sort?: string; userIds?: string[] } = {},
+) => {
+	const { page = 1, sort = "newest", userIds } = params;
+	return queryOptions({
+		queryKey: ["commissions", { page, sort, userIds: userIds ?? null }],
+		queryFn: () => getCommissionsQuery({ data: { page, sort, userIds } }),
+	});
+};
 
 export const createCommissionQuery = createServerFn({ method: "POST" })
 	.inputValidator(
