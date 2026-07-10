@@ -62,16 +62,19 @@ export const Route = createFileRoute("/_authed/supplier-column-mapping")({
 type SupplierEntry = {
 	id?: string;
 	production?: {
+		title_row: string;
 		subcode_column: string;
 		verification_column: string;
 		amount_column: string;
 	};
 	encours?: {
+		title_row: string;
 		subcode_column: string;
 		verification_column: string;
 		amount_column: string;
 	};
 	production_encours?: {
+		title_row: string;
 		production_subcode_column: string;
 		production_verification_column: string;
 		production_amount_column: string;
@@ -119,6 +122,7 @@ function SupplierColumnMappingTab() {
 				id: col.id,
 				production: col.production
 					? {
+							title_row: col.production.title_row || "",
 							subcode_column: col.production.subcode_column || "",
 							verification_column: col.production.verification_column || "",
 							amount_column: col.production.amount_column || "",
@@ -126,6 +130,7 @@ function SupplierColumnMappingTab() {
 					: undefined,
 				encours: col.encours
 					? {
+							title_row: col.encours.title_row || "",
 							subcode_column: col.encours.subcode_column || "",
 							verification_column: col.encours.verification_column || "",
 							amount_column: col.encours.amount_column || "",
@@ -133,6 +138,7 @@ function SupplierColumnMappingTab() {
 					: undefined,
 				production_encours: col.production_encours
 					? {
+							title_row: col.production_encours.title_row || "",
 							production_subcode_column:
 								col.production_encours.production_subcode_column || "",
 							production_verification_column:
@@ -228,16 +234,19 @@ function SupplierColumnMappingTab() {
 				...prev,
 				[supplierId]: {
 					production: {
+						title_row: "",
 						subcode_column: "",
 						verification_column: "",
 						amount_column: "",
 					},
 					encours: {
+						title_row: "",
 						subcode_column: "",
 						verification_column: "",
 						amount_column: "",
 					},
 					production_encours: {
+						title_row: "",
 						production_subcode_column: "",
 						production_verification_column: "",
 						production_amount_column: "",
@@ -314,6 +323,7 @@ function SupplierColumnMappingTab() {
 		} else if (entry.id) {
 			// Send empty object to clear (only if updating existing)
 			payload.production = {
+				title_row: null,
 				subcode_column: null,
 				verification_column: null,
 				amount_column: null,
@@ -330,6 +340,7 @@ function SupplierColumnMappingTab() {
 		} else if (entry.id) {
 			// Send empty object to clear (only if updating existing)
 			payload.encours = {
+				title_row: null,
 				subcode_column: null,
 				verification_column: null,
 				amount_column: null,
@@ -353,6 +364,7 @@ function SupplierColumnMappingTab() {
 		} else if (entry.id) {
 			// Send empty object to clear (only if updating existing)
 			payload.production_encours = {
+				title_row: null,
 				production_verification_column: null,
 				production_subcode_column: null,
 				production_amount_column: null,
@@ -553,6 +565,24 @@ function SupplierColumnMappingTab() {
 											<Badge variant="outline" className="text-sm">
 												Production
 											</Badge>
+											<div className="w-40">
+												<Label className="text-xs text-gray-600 mb-1 block">
+													Ligne(s) de titres
+												</Label>
+												<Input
+													placeholder="Ex: 2/3"
+													value={entry.production?.title_row || ""}
+													onChange={(e) =>
+														updateField(
+															supplierId,
+															"production",
+															"title_row",
+															e.target.value,
+														)
+													}
+													className="h-10"
+												/>
+											</div>
 											<div className="grid grid-cols-10 gap-3">
 												<div className="col-span-2">
 													<Label className="text-xs text-gray-600 mb-1 block">
@@ -620,6 +650,24 @@ function SupplierColumnMappingTab() {
 											<Badge variant="outline" className="text-sm">
 												Encours
 											</Badge>
+											<div className="w-40">
+												<Label className="text-xs text-gray-600 mb-1 block">
+													Ligne(s) de titres
+												</Label>
+												<Input
+													placeholder="Ex: 2/3"
+													value={entry.encours?.title_row || ""}
+													onChange={(e) =>
+														updateField(
+															supplierId,
+															"encours",
+															"title_row",
+															e.target.value,
+														)
+													}
+													className="h-10"
+												/>
+											</div>
 											<div className="grid grid-cols-10 gap-3">
 												<div className="col-span-2">
 													<Label className="text-xs text-gray-600 mb-1 block">
@@ -687,6 +735,25 @@ function SupplierColumnMappingTab() {
 											<Badge variant="outline" className="text-sm">
 												Production + Encours
 											</Badge>
+
+											<div className="w-40">
+												<Label className="text-xs text-gray-600 mb-1 block">
+													Ligne(s) de titres
+												</Label>
+												<Input
+													placeholder="Ex: 2/3"
+													value={entry.production_encours?.title_row || ""}
+													onChange={(e) =>
+														updateField(
+															supplierId,
+															"production_encours",
+															"title_row",
+															e.target.value,
+														)
+													}
+													className="h-10"
+												/>
+											</div>
 
 											{/* Production Row */}
 											<div className="space-y-2">

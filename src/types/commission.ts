@@ -41,16 +41,19 @@ export interface SuppliersCommissionsColumn {
   id: string;
   supplier: string | Supplier;
   production?: {
+    title_row?: string | null;
     subcode_column?: string | null;
     verification_column?: string | null;
     amount_column?: string | null;
   };
   encours?: {
+    title_row?: string | null;
     subcode_column?: string | null;
     verification_column?: string | null;
     amount_column?: string | null;
   };
   production_encours?: {
+    title_row?: string | null;
     production_subcode_column?: string | null;
     production_verification_column?: string | null;
     production_amount_column?: string | null;

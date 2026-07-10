@@ -433,7 +433,7 @@ function RouteComponent() {
 					)}
 
 					{/* Pagination */}
-					{totalPages > 1 && (
+					{totalCount > 0 && (
 						<div className="flex flex-col sm:flex-row items-center justify-between gap-4">
 							<p className="text-sm text-muted-foreground">
 								Affichage de {(currentPage - 1) * data.limit + 1} à{" "}
