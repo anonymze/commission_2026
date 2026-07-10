@@ -15,7 +15,8 @@ export function getContext() {
 				// refetchOnMount: true,
 				// refetchOnWindowFocus: true,
 				retry: 1,
-				staleTime: 60 * 60 * 1000, // 60 minutes
+				staleTime: 60 * 60 * 1000, // 60 minutes (donnée considérée fraîche)
+				gcTime: 60 * 60 * 1000, // 60 minutes (cache gardé même page quittée)
 			},
 		},
 	});
