@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import type {
 	AppUsersCommissionsCode,
 	Commission,
@@ -32,6 +33,7 @@ export const getCommissionsQuery = createServerFn({ method: "GET" })
 			params.set("limit", String(COMMISSIONS_PAGE_SIZE));
 			params.set("page", String(page));
 			params.set("sort", COMMISSIONS_SORT_MAP[sort] ?? "-date");
+			params.set("where[archived][equals]", "false");
 			if (userIds) {
 				// empty match -> sentinel id so the query returns nothing
 				params.set(
@@ -85,8 +87,34 @@ export const createCommissionQuery = createServerFn({ method: "POST" })
 export const deleteCommissionQuery = createServerFn({ method: "POST" })
 	.inputValidator((commissionId: Commission["id"]) => commissionId)
 	.handler(async ({ data: commissionId }) => {
-		const response = await api.delete(`/api/commissions/${commissionId}`);
-		return response.data;
+		const result = await deleteCommissionsQuery({
+			data: { ids: [commissionId] },
+		});
+		if (result.failedIds.length) {
+			throw new Error("Erreur lors de l'archivage de la commission");
+		}
+		return result;
+	});
+
+export const deleteCommissionsQuery = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({ ids: z.array(z.uuid()).min(1).max(COMMISSIONS_PAGE_SIZE) }),
+	)
+	.handler(async ({ data }) => {
+		try {
+			const response = await api.post<unknown>(
+				"/api/commissions/bulk-delete",
+				data,
+			);
+			return z
+				.object({
+					deletedIds: z.array(z.string()),
+					failedIds: z.array(z.string()),
+				})
+				.parse(response.data);
+		} catch (error) {
+			handleApiError(error);
+		}
 	});
 
 export const getCommissionExportQuery = createServerFn({ method: "POST" })

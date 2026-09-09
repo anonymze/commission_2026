@@ -15,6 +15,7 @@ import { appUsersQueryOptions } from "@/api/queries/app-user-queries";
 import {
 	commissionsQueryOptions,
 	deleteCommissionQuery,
+	deleteCommissionsQuery,
 	getCommissionExportQuery,
 } from "@/api/queries/commission-queries";
 import CreateCommissionDialog from "@/components/commission-dialog";
@@ -29,6 +30,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -168,6 +177,33 @@ function RouteComponent() {
 	const [localFilter, setLocalFilter] = React.useState(search.filter);
 	const [showCreateDialog, setShowCreateDialog] = React.useState(false);
 
+	const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+	const [confirmBulkDelete, setConfirmBulkDelete] = React.useState(false);
+	const selectedPageIds = data.docs
+		.filter((doc) => selectedIds.includes(doc.id))
+		.map((doc) => doc.id);
+	const allSelected =
+		data.docs.length > 0 && selectedPageIds.length === data.docs.length;
+	const selectionScope = JSON.stringify([
+		search.page,
+		search.filter,
+		search.sort,
+	]);
+	const [previousScope, setPreviousScope] = React.useState(selectionScope);
+	if (previousScope !== selectionScope) {
+		setPreviousScope(selectionScope);
+		setSelectedIds([]);
+		setConfirmBulkDelete(false);
+	}
+
+	React.useEffect(() => {
+		if (search.page > Math.max(1, totalPages)) {
+			navigate({
+				search: (prev) => ({ ...prev, page: Math.max(1, totalPages) }),
+			});
+		}
+	}, [search.page, totalPages, navigate]);
+
 	// Sync local filter with URL changes (e.g., back/forward navigation)
 	React.useEffect(() => {
 		setLocalFilter(search.filter);
@@ -175,6 +211,7 @@ function RouteComponent() {
 
 	// Handle page navigation (clamped to valid range)
 	const handlePageChange = (newPage: number) => {
+		if (bulkDeleteMutation.isPending) return;
 		const clamped = Math.min(Math.max(newPage, 1), totalPages);
 		navigate({
 			search: (prev) => ({ ...prev, page: clamped }),
@@ -201,10 +238,36 @@ function RouteComponent() {
 		mutationFn: deleteCommissionQuery,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["commissions"] });
-			toast.success("Commission supprimée avec succès");
+			toast.success("Commission archivée avec succès");
 		},
 		onError: () => {
 			toast.error("Erreur lors de la suppression de la commission");
+		},
+	});
+
+	const bulkDeleteMutation = useMutation({
+		mutationFn: deleteCommissionsQuery,
+		onSuccess: async ({ deletedIds, failedIds }) => {
+			setSelectedIds(failedIds);
+			setConfirmBulkDelete(false);
+			if (deletedIds.length)
+				toast.success(
+					deletedIds.length === 1
+						? "1 commission archivée"
+						: `${deletedIds.length} commissions archivées`,
+				);
+			if (failedIds.length)
+				toast.error(
+					`${failedIds.length} suppression(s) échouée(s). Les commissions concernées restent sélectionnées.`,
+				);
+			await queryClient.invalidateQueries({ queryKey: ["commissions"] });
+		},
+		onError: async () => {
+			setConfirmBulkDelete(false);
+			toast.error(
+				"Suppression non confirmée. Vérifiez la liste avant de réessayer.",
+			);
+			await queryClient.invalidateQueries({ queryKey: ["commissions"] });
 		},
 	});
 
@@ -274,6 +337,7 @@ function RouteComponent() {
 						</div>
 						<Button
 							disabled={
+								bulkDeleteMutation.isPending ||
 								deleteCommissionMutation.isPending ||
 								exportCommissionMutation.isPending
 							}
@@ -297,6 +361,7 @@ function RouteComponent() {
 					{/* Filters */}
 					<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
 						<SearchInput
+							disabled={bulkDeleteMutation.isPending}
 							searchTerm={localFilter}
 							onSearchChange={handleSearchChange}
 						/>
@@ -316,6 +381,31 @@ function RouteComponent() {
             </div>*/}
 					</div>
 
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<p className="text-sm text-muted-foreground" aria-live="polite">
+							{selectedPageIds.length} commission(s) sélectionnée(s) sur cette
+							page
+						</p>
+						<Button
+							variant="destructive"
+							size="sm"
+							className="h-7 gap-1 text-xs"
+							aria-label={`Supprimer les ${selectedPageIds.length} commissions sélectionnées`}
+							disabled={
+								!selectedPageIds.length ||
+								bulkDeleteMutation.isPending ||
+								deleteCommissionMutation.isPending ||
+								exportCommissionMutation.isPending
+							}
+							onClick={() => setConfirmBulkDelete(true)}
+						>
+							<Trash2Icon className="size-3" />
+							{bulkDeleteMutation.isPending
+								? "Suppression..."
+								: `Supprimer (${selectedPageIds.length})`}
+						</Button>
+					</div>
+
 					{/* Table or No Results */}
 					{data.docs.length === 0 && search.filter ? (
 						<div className="p-6 flex items-center justify-center">
@@ -328,6 +418,31 @@ function RouteComponent() {
 							<Table>
 								<TableHeader>
 									<TableRow>
+										<TableHead className="w-12 px-5">
+											<input
+												type="checkbox"
+												className="size-4 accent-primary"
+												aria-label="Sélectionner toutes les commissions de cette page"
+												checked={allSelected}
+												ref={(node) => {
+													if (node)
+														node.indeterminate =
+															selectedPageIds.length > 0 && !allSelected;
+												}}
+												disabled={
+													!data.docs.length ||
+													bulkDeleteMutation.isPending ||
+													deleteCommissionMutation.isPending
+												}
+												onChange={(event) =>
+													setSelectedIds(
+														event.target.checked
+															? data.docs.map((doc) => doc.id)
+															: [],
+													)
+												}
+											/>
+										</TableHead>
 										<TableHead className="px-5">Email</TableHead>
 										<TableHead className="px-5">Nom et prénom</TableHead>
 										<TableHead className="px-5">Production</TableHead>
@@ -340,7 +455,34 @@ function RouteComponent() {
 								</TableHeader>
 								<TableBody>
 									{data.docs.map((commission) => (
-										<TableRow key={commission.id}>
+										<TableRow
+											key={commission.id}
+											data-state={
+												selectedPageIds.includes(commission.id)
+													? "selected"
+													: undefined
+											}
+										>
+											<TableCell className="px-5">
+												<input
+													type="checkbox"
+													className="size-4 accent-primary"
+													aria-label={`Sélectionner la commission de ${commission.app_user.email}`}
+													checked={selectedPageIds.includes(commission.id)}
+													disabled={
+														bulkDeleteMutation.isPending ||
+														deleteCommissionMutation.isPending
+													}
+													onChange={(event) => {
+														const checked = event.target.checked;
+														setSelectedIds((ids) =>
+															checked
+																? [...ids, commission.id]
+																: ids.filter((id) => id !== commission.id),
+														);
+													}}
+												/>
+											</TableCell>
 											<TableCell className="font-medium px-5">
 												{commission.app_user.email}
 											</TableCell>
@@ -375,6 +517,7 @@ function RouteComponent() {
 												<DropdownMenu>
 													<DropdownMenuTrigger
 														disabled={
+															bulkDeleteMutation.isPending ||
 															deleteCommissionMutation.isPending ||
 															exportCommissionMutation.isPending
 														}
@@ -498,6 +641,44 @@ function RouteComponent() {
 					)}
 				</CardContent>
 			</Card>
+			<Dialog
+				open={confirmBulkDelete}
+				onOpenChange={(open) => {
+					if (!bulkDeleteMutation.isPending) setConfirmBulkDelete(open);
+				}}
+			>
+				<DialogContent showCloseButton={!bulkDeleteMutation.isPending}>
+					<DialogHeader>
+						<DialogTitle>
+							Supprimer {selectedPageIds.length} commission(s) ?
+						</DialogTitle>
+						<DialogDescription>
+							Les commissions sélectionnées seront archivées et retirées du
+							tableau. Leurs données et lignes fournisseurs seront conservées.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							disabled={bulkDeleteMutation.isPending}
+							onClick={() => setConfirmBulkDelete(false)}
+						>
+							Annuler
+						</Button>
+						<Button
+							variant="destructive"
+							disabled={!selectedPageIds.length || bulkDeleteMutation.isPending}
+							onClick={() =>
+								bulkDeleteMutation.mutate({ data: { ids: selectedPageIds } })
+							}
+						>
+							{bulkDeleteMutation.isPending
+								? "Suppression en cours..."
+								: "Confirmer la suppression"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			<CreateCommissionDialog
 				open={showCreateDialog}
 				onOpenChange={setShowCreateDialog}

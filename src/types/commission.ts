@@ -4,6 +4,7 @@ import type { AppUser, User } from "./user";
 
 export interface Commission {
   id: string;
+  archived: boolean;
   app_user: AppUser["user"];
   date: string;
   commission_suppliers: CommissionSupplier[];
