@@ -1,6 +1,7 @@
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+	ArchiveIcon,
 	BookAlertIcon,
 	CalculatorIcon,
 	DownloadIcon,
@@ -18,6 +19,7 @@ import {
 	deleteCommissionsQuery,
 	getCommissionExportQuery,
 } from "@/api/queries/commission-queries";
+import { CommissionArchivesDialog } from "@/components/commission-archives-dialog";
 import CreateCommissionDialog from "@/components/commission-dialog";
 import { SearchInput } from "@/components/search-input";
 import { TabSkeleton } from "@/components/tab-skeleton";
@@ -176,6 +178,7 @@ function RouteComponent() {
 
 	const [localFilter, setLocalFilter] = React.useState(search.filter);
 	const [showCreateDialog, setShowCreateDialog] = React.useState(false);
+	const [showArchives, setShowArchives] = React.useState(false);
 
 	const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
 	const [confirmBulkDelete, setConfirmBulkDelete] = React.useState(false);
@@ -322,6 +325,19 @@ function RouteComponent() {
 
 	return (
 		<div>
+			{showArchives && (
+				<CommissionArchivesDialog
+					onClose={() => setShowArchives(false)}
+					onExport={(id) =>
+						exportCommissionMutation.mutate({ data: { commissionId: id } })
+					}
+					exportingId={
+						exportCommissionMutation.isPending
+							? exportCommissionMutation.variables.data.commissionId
+							: undefined
+					}
+				/>
+			)}
 			<Card>
 				<CardHeader className="gap-0">
 					<div className="flex items-center justify-between gap-2">
@@ -335,16 +351,26 @@ function RouteComponent() {
 								employés.
 							</CardDescription>
 						</div>
-						<Button
-							disabled={
-								bulkDeleteMutation.isPending ||
-								deleteCommissionMutation.isPending ||
-								exportCommissionMutation.isPending
-							}
-							onClick={() => setShowCreateDialog(true)}
-						>
-							Créer une commission
-						</Button>
+						<div className="flex flex-wrap items-center gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => setShowArchives(true)}
+							>
+								<ArchiveIcon className="size-4" />
+								Archives
+							</Button>
+							<Button
+								disabled={
+									bulkDeleteMutation.isPending ||
+									deleteCommissionMutation.isPending ||
+									exportCommissionMutation.isPending
+								}
+								onClick={() => setShowCreateDialog(true)}
+							>
+								Créer une commission
+							</Button>
+						</div>
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
