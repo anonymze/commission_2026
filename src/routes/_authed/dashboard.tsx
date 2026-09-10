@@ -158,7 +158,7 @@ function RouteComponent() {
 	const navigate = Route.useNavigate();
 	const search = Route.useSearch();
 
-	// server-side pagination: resolve matching users, fetch that page (10/page)
+	// server-side pagination: resolve matching users, fetch that page
 	const userIds = search.filter
 		? matchUserIds(usersData.docs, search.filter)
 		: undefined;

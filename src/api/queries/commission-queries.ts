@@ -13,7 +13,7 @@ import type { Retrocession, RetrocessionPayload } from "@/types/retrocession";
 import type { Supplier } from "@/types/supplier";
 import { api, handleApiError } from "../_config";
 
-export const COMMISSIONS_PAGE_SIZE = 10;
+export const COMMISSIONS_PAGE_SIZE = 12;
 
 const COMMISSIONS_SORT_MAP: Record<string, string> = {
 	newest: "-date",
