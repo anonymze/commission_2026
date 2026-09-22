@@ -6,7 +6,6 @@ import {
 	Loader2,
 	Plus,
 	Save,
-	Search,
 	Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,6 +17,7 @@ import {
 	deleteAppUserCommissionCodeQuery,
 } from "@/api/queries/commission-queries";
 import { suppliersQueryOptions } from "@/api/queries/supplier-queries";
+import { SearchInput } from "@/components/search-input";
 import { TabSkeleton } from "@/components/tab-skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -325,7 +325,7 @@ function UsersCodeTab() {
 	return (
 		<Card>
 			<CardHeader className="gap-0">
-				<div className="flex items-center justify-between gap-2">
+				<div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 					<div className="flex flex-col gap-2">
 						<CardTitle className="flex items-center gap-2">
 							<CodeIcon className="w-5 h-5" />
@@ -339,20 +339,15 @@ function UsersCodeTab() {
 					{isOperating && (
 						<Loader2 className="h-5 w-5 animate-spin text-black" />
 					)}
-				</div>
-			</CardHeader>
-			<CardContent className="space-y-6">
-				{/* User Selection & Search */}
-				<div className="flex items-center justify-between gap-4">
 					<Popover open={open} onOpenChange={setOpen}>
 						<PopoverTrigger asChild>
 							<Button
-								variant="outline"
+								variant="default"
 								role="combobox"
 								aria-expanded={open}
-								className="w-[300px] justify-between"
+								className="w-full justify-between sm:w-auto sm:min-w-[220px]"
 							>
-								Sélectionner un utilisateur...
+								Ajouter un utilisateur
 								<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 							</Button>
 						</PopoverTrigger>
@@ -386,19 +381,10 @@ function UsersCodeTab() {
 							</Command>
 						</PopoverContent>
 					</Popover>
-
-					{Object.keys(userCodeEntries).length > 0 && (
-						<div className="relative w-[300px]">
-							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-							<Input
-								placeholder="Rechercher..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-10"
-							/>
-						</div>
-					)}
 				</div>
+			</CardHeader>
+			<CardContent className="space-y-4">
+				<SearchInput searchTerm={searchQuery} onSearchChange={setSearchQuery} />
 
 				{/* Selected Users Display */}
 				{Object.keys(userCodeEntries).length > 0 && (

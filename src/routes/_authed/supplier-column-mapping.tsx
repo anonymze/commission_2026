@@ -6,7 +6,6 @@ import {
 	ChevronsUpDown,
 	FileSpreadsheetIcon,
 	SaveIcon,
-	Search,
 	Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,6 +17,7 @@ import {
 	updateSupplierCommissionColumnQuery,
 } from "@/api/queries/commission-queries";
 import { suppliersQueryOptions } from "@/api/queries/supplier-queries";
+import { SearchInput } from "@/components/search-input";
 import { TabSkeleton } from "@/components/tab-skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -455,7 +455,7 @@ function SupplierColumnMappingTab() {
 		<div className="space-y-6">
 			<Card>
 				<CardHeader className="gap-0">
-					<div className="flex items-center justify-between gap-2">
+					<div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 						<div className="flex flex-col gap-2">
 							<CardTitle className="flex items-center gap-2">
 								<FileSpreadsheetIcon className="w-5 h-5" />
@@ -466,29 +466,15 @@ function SupplierColumnMappingTab() {
 								encours, production-encours).
 							</CardDescription>
 						</div>
-					</div>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<Alert className="items-center">
-						<BookAlertIcon className="h-4 w-4" />
-						<AlertDescription>
-							Chaque fournisseur peut avoir 3 types d'entrées : Production,
-							Encours, et Production-Encours. Spécifiez les colonnes pour
-							"sous-code" et "Montant" pour chaque type.
-						</AlertDescription>
-					</Alert>
-
-					{/* Supplier Selector & Search */}
-					<div className="flex items-center justify-between gap-4">
 						<Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
 							<PopoverTrigger asChild>
 								<Button
-									variant="outline"
+									variant="default"
 									role="combobox"
 									aria-expanded={supplierOpen}
-									className="w-[300px] justify-between"
+									className="w-full justify-between sm:w-auto sm:min-w-[220px]"
 								>
-									Sélectionner un fournisseur...
+									Ajouter un fournisseur
 									<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 								</Button>
 							</PopoverTrigger>
@@ -513,19 +499,22 @@ function SupplierColumnMappingTab() {
 								</Command>
 							</PopoverContent>
 						</Popover>
-
-						{Object.keys(supplierEntries).length > 0 && (
-							<div className="relative w-[300px]">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-								<Input
-									placeholder="Rechercher..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
-						)}
 					</div>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<Alert className="items-center">
+						<BookAlertIcon className="h-4 w-4" />
+						<AlertDescription>
+							Chaque fournisseur peut avoir 3 types d'entrées : Production,
+							Encours, et Production-Encours. Spécifiez les colonnes pour
+							"sous-code" et "Montant" pour chaque type.
+						</AlertDescription>
+					</Alert>
+
+					<SearchInput
+						searchTerm={searchQuery}
+						onSearchChange={setSearchQuery}
+					/>
 
 					{/* Supplier Cards */}
 					<div className="space-y-4 mt-6">
@@ -959,8 +948,8 @@ function SupplierColumnMappingTab() {
 					{sortedSupplierIds.length === 0 && (
 						<div className="text-center py-8">
 							<p className="text-gray-500 text-sm">
-								Aucun fournisseur sélectionné. Cliquez sur "Sélectionner un
-								fournisseur" pour commencer.
+								Aucun fournisseur trouvé. Cliquez sur "Ajouter un fournisseur"
+								pour commencer.
 							</p>
 						</div>
 					)}
