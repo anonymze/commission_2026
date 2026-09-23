@@ -20,3 +20,8 @@ formation déclarationd des revenus 9 avril 2026
 
 5. Quelle date détermine le mois de commission ? Période du relevé,
     date de facture ou date de paiement ?
+
+sortir groupe valorem dans le excel
+retrocession dans l'excel (comment l'afficher), remettre loe blocage si pas config
+api + ia pour récupérer les fichiers chez le fournisseur (mail à envoyer pour expliquer ce qu'on veut)
+les pdfs à traiter (ia ou js)
