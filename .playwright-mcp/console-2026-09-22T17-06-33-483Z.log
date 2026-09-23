@@ -1,3 +1,6 @@
 [ 5605032ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3333/src/routes/__root.tsx:65
 [ 5605098ms] [ERROR] Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED @ http://localhost:3333/__tsd/console-pipe/sse:0
 [ 5608752ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3333/node_modules/.vite/deps/react-dom_client.js?v=73c3e15a:14337
+[16191703ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3333/src/routes/__root.tsx:65
+[16191779ms] [ERROR] Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED @ http://localhost:3333/__tsd/console-pipe/sse:0
+[16195405ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3333/node_modules/.vite/deps/react-dom_client.js?v=73c3e15a:14337

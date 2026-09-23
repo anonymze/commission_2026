@@ -6,11 +6,17 @@ formation déclarationd des revenus 9 avril 2026
 
 // a faire
 
-points d'améliorations :
+1. Pouvez-vous fournir plusieurs PDF par fournisseur, sur des mois
+     différents, pour voir si leur présentation change ?
 
-EXCELS PLUS JOLIES
-FILTRES DE BASE SUR LE EXCEL 
-ECELS MARCHENT PAS SUR MAC ?? dependant de numbers ou l'app ?
-BULK ACTIONS POUR SUPPRIMER PLUSIEURS
-ia ?? accélerer l'outil de commission
-repartir sur de bonnes bases suppressions des commissions (chaque 10 du mois) + ajouter date sur la commssion + archivre les commissions plutot que delete complètement (boutons arhcivage spour récupérer).
+2. Comment identifier l’indépendant de chaque ligne ? Code, nom,
+    société ou correspondance avec le client ? Ca dépend du fournisseur ?
+
+3. Quel montant faut-il récupérer ? Par exemple : commission HT de 800
+    € ou TTC de 960 € ? Faut-il reprendre les montants négatifs ?
+
+4. Un PDF peut-il mélanger production et encours ? Si oui, comment les
+    distinguez-vous dans le PDF si les deux ?
+
+5. Quelle date détermine le mois de commission ? Période du relevé,
+    date de facture ou date de paiement ?
