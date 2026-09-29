@@ -65,6 +65,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { debounce } from "@/lib/utils";
+import type { Commission } from "@/types/commission";
 import type { User } from "@/types/user";
 
 // resolve app-user ids whose email / name matches the search term
@@ -179,6 +180,8 @@ function RouteComponent() {
 	const [localFilter, setLocalFilter] = React.useState(search.filter);
 	const [showCreateDialog, setShowCreateDialog] = React.useState(false);
 	const [showArchives, setShowArchives] = React.useState(false);
+	const [commissionToSend, setCommissionToSend] =
+		React.useState<Commission | null>(null);
 
 	const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
 	const [confirmBulkDelete, setConfirmBulkDelete] = React.useState(false);
@@ -279,6 +282,7 @@ function RouteComponent() {
 		mutationFn: getCommissionExportQuery,
 		onSuccess: (response, variables) => {
 			if ("email" in response && response.email) {
+				setCommissionToSend(null);
 				toast.success("Commission envoyée par email avec succès");
 				return;
 			}
@@ -579,14 +583,7 @@ function RouteComponent() {
 															<span>Exporter</span>
 														</DropdownMenuItem>
 														<DropdownMenuItem
-															onClick={() =>
-																exportCommissionMutation.mutate({
-																	data: {
-																		commissionId: commission.id,
-																		email: commission.app_user.email,
-																	},
-																})
-															}
+															onClick={() => setCommissionToSend(commission)}
 														>
 															<MailIcon className="mr-2 h-4 w-4" />
 															<span>Envoyer</span>
@@ -667,6 +664,56 @@ function RouteComponent() {
 					)}
 				</CardContent>
 			</Card>
+			<Dialog
+				open={commissionToSend !== null}
+				onOpenChange={(open) => {
+					if (!open && !exportCommissionMutation.isPending) {
+						setCommissionToSend(null);
+					}
+				}}
+			>
+				<DialogContent showCloseButton={!exportCommissionMutation.isPending}>
+					<DialogHeader>
+						<DialogTitle>Envoyer la commission par email ?</DialogTitle>
+						<DialogDescription>
+							Le fichier Excel sera envoyé à{" "}
+							{commissionToSend?.app_user.firstname}{" "}
+							{commissionToSend?.app_user.lastname}.
+							<span className="mt-1 block break-all font-medium text-foreground">
+								{commissionToSend?.app_user.email}
+							</span>
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="outline"
+							disabled={exportCommissionMutation.isPending}
+							onClick={() => setCommissionToSend(null)}
+						>
+							Annuler
+						</Button>
+						<Button
+							disabled={
+								!commissionToSend?.app_user.email ||
+								exportCommissionMutation.isPending
+							}
+							onClick={() => {
+								if (!commissionToSend || exportCommissionMutation.isPending) return;
+								exportCommissionMutation.mutate({
+									data: {
+										commissionId: commissionToSend.id,
+										email: commissionToSend.app_user.email,
+									},
+								});
+							}}
+						>
+							{exportCommissionMutation.isPending
+								? "Envoi en cours..."
+								: "Confirmer l'envoi"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			<Dialog
 				open={confirmBulkDelete}
 				onOpenChange={(open) => {
