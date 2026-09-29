@@ -698,7 +698,8 @@ function RouteComponent() {
 								exportCommissionMutation.isPending
 							}
 							onClick={() => {
-								if (!commissionToSend || exportCommissionMutation.isPending) return;
+								if (!commissionToSend || exportCommissionMutation.isPending)
+									return;
 								exportCommissionMutation.mutate({
 									data: {
 										commissionId: commissionToSend.id,
