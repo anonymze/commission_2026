@@ -110,6 +110,7 @@ function RouteComponent() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isDragging, setIsDragging] = useState(false);
 	const [pdfTarget, setPdfTarget] = useState<PdfTarget | null>(null);
+	const [pendingPdfImportIds, setPendingPdfImportIds] = useState<string[]>([]);
 	const [analysisProgress, setAnalysisProgress] = useState<{
 		current: number;
 		total: number;
@@ -159,6 +160,12 @@ function RouteComponent() {
 					result.failed += uploaded.failed;
 					result.failedFiles.push(...(uploaded.failedFiles || []));
 					result.pdfFiles.push(...(uploaded.pdfFiles || []));
+					setPendingPdfImportIds((ids) => [
+						...ids,
+						...(uploaded.pdfFiles || []).map(
+							(target: PdfTarget) => target.importId,
+						),
+					]);
 				} catch (error) {
 					if (!pdf) throw error;
 					result.failed += batch.length;
@@ -172,7 +179,8 @@ function RouteComponent() {
 		},
 		onSuccess: async (result) => {
 			queryClient.invalidateQueries({ queryKey: ["commissions-import"] });
-			toast.success(`${result.uploaded} fichier(s) importé(s)`);
+			if (!result.pdfFiles.length && result.uploaded > 0)
+				toast.success(`${result.uploaded} fichier(s) importé(s)`);
 			if (result.failed > 0) {
 				toast.error(
 					`Fichiers non importés : ${result.failedFiles?.join(", ")}`,
@@ -197,7 +205,7 @@ function RouteComponent() {
 						queryKey: ["commissions-import"],
 					});
 				}
-				if (pdfFiles.length)
+				if (pdfFiles.length > failed)
 					toast.success(`${pdfFiles.length - failed} PDF prêt(s) à vérifier`);
 				if (failed)
 					toast.error(
@@ -205,9 +213,12 @@ function RouteComponent() {
 					);
 			} finally {
 				setAnalysisProgress(null);
+				setPendingPdfImportIds([]);
 			}
 		},
 		onError: () => {
+			setAnalysisProgress(null);
+			setPendingPdfImportIds([]);
 			toast.error("Erreur lors de l'importation du fichier");
 		},
 	});
@@ -224,7 +235,13 @@ function RouteComponent() {
 	});
 
 	const allSuppliers = suppliers?.docs || [];
-	const existingImports = commissionImports?.docs || [];
+	const existingImports = useMemo(
+		() =>
+			(commissionImports?.docs || []).filter(
+				(importItem) => !pendingPdfImportIds.includes(importItem.id),
+			),
+		[commissionImports, pendingPdfImportIds],
+	);
 
 	// Calculate total files count
 	const totalFilesCount = useMemo(() => {
@@ -355,7 +372,7 @@ function RouteComponent() {
 						</CardDescription>
 					</div>
 					{isOperating && (
-						<Loader2 className="h-5 w-5 animate-spin text-black" />
+						<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
 					)}
 					<Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
 						<PopoverTrigger asChild>
@@ -476,7 +493,7 @@ function RouteComponent() {
 								setIsDragging(false);
 								handleFileUpload(event.dataTransfer.files);
 							}}
-							className={`relative min-w-0 border-2 border-dashed rounded-lg p-6 text-center focus-within:ring-2 focus-within:ring-ring ${isDragging ? "border-primary bg-accent" : "border-border"} ${isOperating ? "opacity-50" : ""}`}
+							className={`relative min-w-0 border-2 border-dashed rounded-lg p-6 text-center focus-within:ring-2 focus-within:ring-ring ${isDragging ? "border-primary bg-accent" : "border-border"}`}
 						>
 							<input
 								type="file"
@@ -503,13 +520,22 @@ function RouteComponent() {
 								) : (
 									<Upload className="h-8 w-8 text-muted-foreground" />
 								)}
-								<span className="text-sm text-muted-foreground">
+								<span role="status" className="text-sm font-medium">
 									{isUploading
 										? analysisProgress
-											? `${analysisProgress.stage === "upload" ? "Importation" : "Analyse"} du PDF ${analysisProgress.current} sur ${analysisProgress.total}…`
+											? `${analysisProgress.stage === "upload" ? "Envoi" : "Analyse"} du PDF ${analysisProgress.current} sur ${analysisProgress.total} en cours...`
 											: "Import en cours..."
 										: "Déposer vos fichiers ici ou cliquer pour les sélectionner"}
 								</span>
+								{analysisProgress && (
+									<p className="max-w-xl text-sm text-muted-foreground">
+										{analysisProgress.stage === "upload"
+											? "Nous enregistrons vos PDF avant de les analyser."
+											: "Nous lisons vos PDF pour extraire les montants de commissions et rechercher les fournisseurs et les indépendants correspondants."}{" "}
+										Les fichiers apparaîtront ci-dessous une fois l'analyse
+										terminée, pour vous permettre de vérifier les données.
+									</p>
+								)}
 								<span className="text-xs text-muted-foreground">
 									{isPdfMode
 										? "PDF · 20 Mo / fichier · 20 pages pour l’analyse"
