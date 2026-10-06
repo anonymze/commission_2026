@@ -645,20 +645,19 @@ function RouteComponent() {
 																				?.toLowerCase()
 																				.endsWith(".pdf")) && (
 																			<>
-																				<Badge
-																					variant={
-																						fileItem.pdfExtraction?.review
+																				{fileItem.pdfExtraction?.review
+																					?.status !== "draft" && (
+																					<Badge
+																						variant={
+																							fileItem.pdfExtraction?.review
+																								?.status === "validated"
+																								? "default"
+																								: "secondary"
+																						}
+																					>
+																						{fileItem.pdfExtraction?.review
 																							?.status === "validated"
-																							? "default"
-																							: "secondary"
-																					}
-																				>
-																					{fileItem.pdfExtraction?.review
-																						?.status === "validated"
-																						? "PDF · Validé"
-																						: fileItem.pdfExtraction?.review
-																									?.status === "draft"
-																							? "PDF · À vérifier"
+																							? "PDF · Validé"
 																							: fileItem.pdfExtraction?.review
 																										?.status === "processing"
 																								? "PDF · Analyse en cours"
@@ -666,7 +665,8 @@ function RouteComponent() {
 																											?.status === "failed"
 																									? "PDF · Analyse à reprendre"
 																									: "PDF · À analyser"}
-																				</Badge>
+																					</Badge>
+																				)}
 																				{fileItem.id && (
 																					<Button
 																						variant={
@@ -689,6 +689,13 @@ function RouteComponent() {
 																							? "Consulter / modifier"
 																							: "Vérifier"}
 																					</Button>
+																				)}
+																				{fileItem.pdfExtraction?.review
+																					?.status !== "validated" && (
+																					<p className="w-full text-xs text-muted-foreground">
+																						Non utilisé dans les commissions
+																						tant qu’il n’est pas validé.
+																					</p>
 																				)}
 																			</>
 																		)}

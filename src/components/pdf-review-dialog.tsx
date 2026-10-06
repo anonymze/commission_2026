@@ -256,9 +256,12 @@ function PdfReviewEditor({
 					</legend>
 					<div className="grid gap-3 sm:grid-cols-2">
 						<div className="min-w-0 space-y-1.5">
-							<p className="text-sm">Fournisseur</p>
+							<p className="text-sm">
+								Fournisseur <RequiredMark />
+							</p>
 							<PdfEntitySelect
 								label="Fournisseur"
+								required
 								value={supplierId}
 								options={options.suppliers}
 								match={review.supplierMatch}
@@ -279,7 +282,7 @@ function PdfReviewEditor({
 								{review.extracted?.supplier_name || "Non identifié"}
 							</p>
 						</div>
-						<Field label="Total commissions HT">
+						<Field label="Total commissions HT" required>
 							<Input
 								type="number"
 								step="0.01"
@@ -305,85 +308,90 @@ function PdfReviewEditor({
 						</span>
 					</div>
 					{lines.map((line, index) => (
-						<fieldset
-							key={line.id}
-							disabled={busy}
-							className="min-w-0 space-y-3 rounded-lg border bg-muted/20 p-3 sm:p-4"
-						>
-							<legend className="px-1 text-sm font-medium">
-								Ligne {index + 1}
-							</legend>
-							<div className="grid gap-3 sm:grid-cols-2">
-								<Field label="Client">
-									<Input
-										value={line.client_name}
-										onChange={(event) =>
-											editLine(line.id, { client_name: event.target.value })
-										}
-									/>
-								</Field>
-								<Field label="Commission HT (€)">
-									<Input
-										type="number"
-										step="0.01"
-										value={line.commission_amount ?? ""}
-										onChange={(event) =>
-											editLine(line.id, {
-												commission_amount: numberValue(event.target.value),
-											})
-										}
-									/>
-								</Field>
-								<div className="min-w-0 space-y-1.5">
-									<p className="text-sm">Indépendant</p>
-									<PdfEntitySelect
-										label={`Indépendant ligne ${index + 1}`}
-										value={line.appUserId}
-										options={options.users}
-										match={line.match}
-										disabled={busy}
-										onChange={(id) => editLine(line.id, { appUserId: id })}
-									/>
-									<p className="break-words text-xs text-muted-foreground">
-										Lu : {line.advisor_name || "Absent du PDF"}
-										{line.advisor_code ? ` · Code ${line.advisor_code}` : ""}
-									</p>
-								</div>
-								<Field label="Type de commission">
-									<select
-										className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-										value={line.entry || ""}
-										onChange={(event) =>
-											editLine(line.id, {
-												entry:
-													event.target.value === "production" ||
-													event.target.value === "encours"
-														? event.target.value
-														: null,
-											})
-										}
-									>
-										<option value="">Choisir…</option>
-										<option value="production">Production</option>
-										<option value="encours">Encours</option>
-									</select>
-								</Field>
-							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="text-destructive"
-								onClick={() => {
-									setLines((previous) =>
-										previous.filter((item) => item.id !== line.id),
-									);
-									onDirty(true);
-								}}
+						<div key={line.id} className="relative">
+							<fieldset
+								disabled={busy}
+								className="min-w-0 rounded-lg border bg-muted/20 p-3 sm:p-4"
 							>
-								<Trash2 className="h-3.5 w-3.5" />
-								Retirer cette ligne
-							</Button>
-						</fieldset>
+								<legend className="px-1 text-sm font-medium">
+									Ligne {index + 1}
+								</legend>
+								<Button
+									variant="ghost"
+									size="icon-sm"
+									aria-label={`Retirer la ligne ${index + 1}`}
+									title="Retirer cette ligne"
+									className="absolute right-2 top-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+									onClick={() => {
+										setLines((previous) =>
+											previous.filter((item) => item.id !== line.id),
+										);
+										onDirty(true);
+									}}
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+								</Button>
+								<div className="grid gap-3 sm:grid-cols-2">
+									<Field label="Client">
+										<Input
+											value={line.client_name}
+											onChange={(event) =>
+												editLine(line.id, { client_name: event.target.value })
+											}
+										/>
+									</Field>
+									<Field label="Commission HT (€)" required>
+										<Input
+											type="number"
+											step="0.01"
+											value={line.commission_amount ?? ""}
+											onChange={(event) =>
+												editLine(line.id, {
+													commission_amount: numberValue(event.target.value),
+												})
+											}
+										/>
+									</Field>
+									<div className="min-w-0 space-y-1.5">
+										<p className="text-sm">
+											Indépendant <RequiredMark />
+										</p>
+										<PdfEntitySelect
+											label={`Indépendant ligne ${index + 1}`}
+											required
+											value={line.appUserId}
+											options={options.users}
+											match={line.match}
+											disabled={busy}
+											onChange={(id) => editLine(line.id, { appUserId: id })}
+										/>
+										<p className="break-words text-xs text-muted-foreground">
+											Lu : {line.advisor_name || "Absent du PDF"}
+											{line.advisor_code ? ` · Code ${line.advisor_code}` : ""}
+										</p>
+									</div>
+									<Field label="Type de commission" required>
+										<select
+											className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+											value={line.entry || ""}
+											onChange={(event) =>
+												editLine(line.id, {
+													entry:
+														event.target.value === "production" ||
+														event.target.value === "encours"
+															? event.target.value
+															: null,
+												})
+											}
+										>
+											<option value="">Choisir…</option>
+											<option value="production">Production</option>
+											<option value="encours">Encours</option>
+										</select>
+									</Field>
+								</div>
+							</fieldset>
+						</div>
 					))}
 					<Button
 						variant="outline"
@@ -470,15 +478,33 @@ function PdfReviewEditor({
 function Field({
 	label,
 	children,
+	required,
 }: {
 	label: string;
-	children: ReactElement<{ id?: string }>;
+	children: ReactElement<{ id?: string; "aria-required"?: boolean }>;
+	required?: boolean;
 }) {
 	const id = useId();
 	return (
 		<label htmlFor={id} className="flex min-w-0 flex-col gap-1.5 text-sm">
-			<span>{label}</span>
-			{cloneElement(children, { id })}
+			<span>
+				{label}
+				{required && (
+					<>
+						{" "}
+						<RequiredMark />
+					</>
+				)}
+			</span>
+			{cloneElement(children, { id, "aria-required": required })}
 		</label>
+	);
+}
+
+function RequiredMark() {
+	return (
+		<span aria-hidden="true" className="text-red-600 dark:text-red-400">
+			*
+		</span>
 	);
 }

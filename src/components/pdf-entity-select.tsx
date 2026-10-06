@@ -22,6 +22,7 @@ export function PdfEntitySelect({
 	options,
 	match,
 	disabled,
+	required,
 	onChange,
 }: {
 	label: string;
@@ -29,6 +30,7 @@ export function PdfEntitySelect({
 	options: { id: string; label: string }[];
 	match?: PdfMatch;
 	disabled?: boolean;
+	required?: boolean;
 	onChange: (id: string | null) => void;
 }) {
 	const [open, setOpen] = useState(false);
@@ -44,6 +46,7 @@ export function PdfEntitySelect({
 						role="combobox"
 						aria-label={label}
 						aria-expanded={open}
+						aria-required={required}
 						disabled={disabled}
 						className="w-full justify-between font-normal"
 					>
