@@ -81,6 +81,7 @@ type ModifiedCommissionSupplier = {
 		verificationKeyword: string;
 		fullRow: any[];
 		type?: "production" | "encours";
+		source?: "pdf";
 	}>;
 };
 
@@ -139,28 +140,33 @@ export default function CreateCommissionDialog({
 			try {
 				// Update all commission suppliers with modified data
 				await Promise.all(
-					modifiedSuppliers.map((supplier) => {
-						const productionTotal = supplier.sheet_lines
-							.filter((line) => {
-								if (line.type) return line.type === "production";
-								return supplier.production > 0 || supplier.encours === 0;
-							})
-							.reduce((sum, line) => sum + line.amount, 0);
-						const encoursTotal = supplier.sheet_lines
-							.filter((line) => {
-								if (line.type) return line.type === "encours";
-								return supplier.encours > 0 && supplier.production === 0;
-							})
-							.reduce((sum, line) => sum + line.amount, 0);
-						return updateSupplier.mutateAsync({
-							data: {
-								id: supplier.id,
-								production: productionTotal,
-								encours: encoursTotal,
-								sheet_lines: supplier.sheet_lines,
-							},
-						});
-					}),
+					modifiedSuppliers
+						.filter(
+							(supplier) =>
+								!supplier.sheet_lines.some((line) => line.source === "pdf"),
+						)
+						.map((supplier) => {
+							const productionTotal = supplier.sheet_lines
+								.filter((line) => {
+									if (line.type) return line.type === "production";
+									return supplier.production > 0 || supplier.encours === 0;
+								})
+								.reduce((sum, line) => sum + line.amount, 0);
+							const encoursTotal = supplier.sheet_lines
+								.filter((line) => {
+									if (line.type) return line.type === "encours";
+									return supplier.encours > 0 && supplier.production === 0;
+								})
+								.reduce((sum, line) => sum + line.amount, 0);
+							return updateSupplier.mutateAsync({
+								data: {
+									id: supplier.id,
+									production: productionTotal,
+									encours: encoursTotal,
+									sheet_lines: supplier.sheet_lines,
+								},
+							});
+						}),
 				);
 
 				// Invalidate commissions list and close (don't refetch commission-import-user to avoid duplicate)
@@ -245,7 +251,10 @@ export default function CreateCommissionDialog({
 			const lineIndex = updated[supplierIndex].sheet_lines.findIndex(
 				(line) => line.rowIndex === lineRowIndex,
 			);
-			if (lineIndex !== -1) {
+			if (
+				lineIndex !== -1 &&
+				updated[supplierIndex].sheet_lines[lineIndex].source !== "pdf"
+			) {
 				updated[supplierIndex].sheet_lines[lineIndex].amount = amount;
 			}
 			return updated;
@@ -257,7 +266,9 @@ export default function CreateCommissionDialog({
 			const updated = [...prev];
 			updated[supplierIndex].sheet_lines = updated[
 				supplierIndex
-			].sheet_lines.filter((line) => line.rowIndex !== lineRowIndex);
+			].sheet_lines.filter(
+				(line) => line.source === "pdf" || line.rowIndex !== lineRowIndex,
+			);
 			return updated;
 		});
 	};
@@ -297,63 +308,63 @@ export default function CreateCommissionDialog({
 						{/* Employee & Date Selection - Always visible */}
 						<Card>
 							<CardContent className="space-y-4">
-							{/* Period Field */}
-							<form.Field
-								name="date"
-								validators={{
-									onChange: validatePeriod,
-								}}
-							>
-								{(field) => (
-									<div className="space-y-2">
-										<Label>
-											Mois de commission{" "}
-											<span className="text-red-500">*</span>
-										</Label>
-										<Popover
-											open={calendarOpen}
-											onOpenChange={setCalendarOpen}
-										>
-											<PopoverTrigger asChild>
-												<Button
-													variant="outline"
-													className={cn(
-														"w-full justify-start text-left font-normal",
-														!field.state.value && "text-muted-foreground",
-														field.state.meta.errors.length > 0 &&
-															"border-red-500",
-													)}
-												>
-													<CalendarIcon className="mr-2 h-4 w-4" />
-													{field.state.value
-														? field.state.value.toLocaleDateString("fr-FR", {
-																month: "2-digit",
-																year: "numeric",
-															})
-														: "Sélectionner le mois"}
-												</Button>
-											</PopoverTrigger>
-											<PopoverContent className="w-auto p-0" align="start">
-												<Calendar
-													mode="single"
-													selected={field.state.value}
-													onSelect={(date) => {
-														if (date) {
-															field.handleChange(date);
-															setCalendarOpen(false);
-														}
-													}}
-												/>
-											</PopoverContent>
-										</Popover>
-										{field.state.meta.errors.length > 0 && (
-											<p className="text-sm text-red-500">
-												{field.state.meta.errors[0]}
-											</p>
-										)}
-									</div>
-								)}
-							</form.Field>
+								{/* Period Field */}
+								<form.Field
+									name="date"
+									validators={{
+										onChange: validatePeriod,
+									}}
+								>
+									{(field) => (
+										<div className="space-y-2">
+											<Label>
+												Mois de commission{" "}
+												<span className="text-red-500">*</span>
+											</Label>
+											<Popover
+												open={calendarOpen}
+												onOpenChange={setCalendarOpen}
+											>
+												<PopoverTrigger asChild>
+													<Button
+														variant="outline"
+														className={cn(
+															"w-full justify-start text-left font-normal",
+															!field.state.value && "text-muted-foreground",
+															field.state.meta.errors.length > 0 &&
+																"border-red-500",
+														)}
+													>
+														<CalendarIcon className="mr-2 h-4 w-4" />
+														{field.state.value
+															? field.state.value.toLocaleDateString("fr-FR", {
+																	month: "2-digit",
+																	year: "numeric",
+																})
+															: "Sélectionner le mois"}
+													</Button>
+												</PopoverTrigger>
+												<PopoverContent className="w-auto p-0" align="start">
+													<Calendar
+														mode="single"
+														selected={field.state.value}
+														onSelect={(date) => {
+															if (date) {
+																field.handleChange(date);
+																setCalendarOpen(false);
+															}
+														}}
+													/>
+												</PopoverContent>
+											</Popover>
+											{field.state.meta.errors.length > 0 && (
+												<p className="text-sm text-red-500">
+													{field.state.meta.errors[0]}
+												</p>
+											)}
+										</div>
+									)}
+								</form.Field>
 								{/* Employee Field */}
 								<form.Field
 									name="app_user"
@@ -509,13 +520,17 @@ export default function CreateCommissionDialog({
 											const supplierProductionTotal = supplier.sheet_lines
 												.filter((line) => {
 													if (line.type) return line.type === "production";
-													return supplier.production > 0 || supplier.encours === 0;
+													return (
+														supplier.production > 0 || supplier.encours === 0
+													);
 												})
 												.reduce((sum, line) => sum + line.amount, 0);
 											const supplierEncoursTotal = supplier.sheet_lines
 												.filter((line) => {
 													if (line.type) return line.type === "encours";
-													return supplier.encours > 0 && supplier.production === 0;
+													return (
+														supplier.encours > 0 && supplier.production === 0
+													);
 												})
 												.reduce((sum, line) => sum + line.amount, 0);
 
@@ -549,6 +564,15 @@ export default function CreateCommissionDialog({
 														</div>
 													</AccordionTrigger>
 													<AccordionContent>
+														{supplier.sheet_lines.some(
+															(line) => line.source === "pdf",
+														) && (
+															<p className="mb-3 text-sm text-muted-foreground">
+																PDF validé · Lecture seule. Pour corriger ces
+																données, modifiez le relevé dans Imports,
+																validez-le puis recréez la commission.
+															</p>
+														)}
 														<Table>
 															<TableHeader>
 																<TableRow>
@@ -557,20 +581,29 @@ export default function CreateCommissionDialog({
 																	<TableHead>Sous-code</TableHead>
 																	<TableHead>Vérification</TableHead>
 																	<TableHead>Montant</TableHead>
-																	<TableHead className="w-[100px]">Actions</TableHead>
+																	<TableHead className="w-[100px]">
+																		Actions
+																	</TableHead>
 																</TableRow>
 															</TableHeader>
 															<TableBody>
 																{supplier.sheet_lines.map((line) => {
 																	const isProduction = line.type
 																		? line.type === "production"
-																		: supplier.production > 0 || supplier.encours === 0;
+																		: supplier.production > 0 ||
+																			supplier.encours === 0;
 																	return (
-																		<TableRow key={`${supplier.id}-${line.rowIndex}`}>
+																		<TableRow
+																			key={`${supplier.id}-${line.rowIndex}`}
+																		>
 																			<TableCell>{line.rowIndex + 1}</TableCell>
 																			<TableCell>
-																				<span className={`font-semibold ${isProduction ? "text-red-600" : "text-blue-600"}`}>
-																					{isProduction ? "Production" : "Encours"}
+																				<span
+																					className={`font-semibold ${isProduction ? "text-red-600" : "text-blue-600"}`}
+																				>
+																					{isProduction
+																						? "Production"
+																						: "Encours"}
 																				</span>
 																			</TableCell>
 																			<TableCell>{line.subcode}</TableCell>
@@ -578,29 +611,46 @@ export default function CreateCommissionDialog({
 																				{line.verificationKeyword}
 																			</TableCell>
 																			<TableCell>
-																				<Input
-																					type="number"
-																					step="0.01"
-																					value={line.amount}
-																					onChange={(e) =>
-																						handleAmountChange(
-																							supplierIndex,
-																							line.rowIndex,
-																							e.target.value,
-																						)
-																					}
-																					className="w-32"
-																				/>
+																				{line.source === "pdf" ? (
+																					<span className="whitespace-nowrap tabular-nums">
+																						{line.amount.toFixed(2)} €
+																					</span>
+																				) : (
+																					<Input
+																						type="number"
+																						step="0.01"
+																						value={line.amount}
+																						onChange={(e) =>
+																							handleAmountChange(
+																								supplierIndex,
+																								line.rowIndex,
+																								e.target.value,
+																							)
+																						}
+																						className="w-32"
+																					/>
+																				)}
 																			</TableCell>
 																			<TableCell>
-																				<Button
-																					type="button"
-																					variant="ghost"
-																					size="sm"
-																					onClick={() => handleDeleteRow(supplierIndex, line.rowIndex)}
-																				>
-																					<Trash2 className="w-4 h-4 text-red-500" />
-																				</Button>
+																				{line.source === "pdf" ? (
+																					<span className="whitespace-nowrap text-xs text-muted-foreground">
+																						PDF · Lecture seule
+																					</span>
+																				) : (
+																					<Button
+																						type="button"
+																						variant="ghost"
+																						size="sm"
+																						onClick={() =>
+																							handleDeleteRow(
+																								supplierIndex,
+																								line.rowIndex,
+																							)
+																						}
+																					>
+																						<Trash2 className="w-4 h-4 text-red-500" />
+																					</Button>
+																				)}
 																			</TableCell>
 																		</TableRow>
 																	);
@@ -618,11 +668,13 @@ export default function CreateCommissionDialog({
 
 					{/* Action Buttons */}
 					<div className="flex items-center justify-between p-4 border-t bg-gray-50">
-
 						<Button
 							type="submit"
 							disabled={
 								form.state.isSubmitting ||
+								!modifiedSuppliers.some((supplier) =>
+									!supplier.sheet_lines.some((line) => line.source === "pdf"),
+								) ||
 								loadingCommissions ||
 								!commissionImportUser ||
 								commissionImportUser.status === "error"
@@ -639,8 +691,8 @@ export default function CreateCommissionDialog({
 									Mettre à jour
 								</>
 							)}
-            </Button>
-            <Button
+						</Button>
+						<Button
 							type="button"
 							variant="outline"
 							onClick={() => onOpenChange(false)}

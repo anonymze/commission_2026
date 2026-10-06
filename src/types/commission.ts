@@ -106,6 +106,7 @@ interface SuccessResponseCommission {
         verificationKeyword: string;
         fullRow: any[];
         type?: "production" | "encours";
+        source?: "pdf";
       }>;
     }>;
   };
