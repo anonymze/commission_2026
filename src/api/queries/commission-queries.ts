@@ -219,12 +219,18 @@ export const deleteRetrocessionQuery = createServerFn({ method: "POST" })
 		return response.data;
 	});
 
-export const getCommissionImportUserQuery = createServerFn({ method: "GET" })
-	.inputValidator((userId: string) => userId)
-	.handler(async ({ data: userId }) => {
+export const generateCommission = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			userId: z.string().uuid(),
+			month: z.string().regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/),
+		}),
+	)
+	.handler(async ({ data: { userId, month } }) => {
 		try {
 			const response = await api.get<ProcessCommissionsResponse>(
 				`/api/commission-imports/${userId}`,
+				{ params: { month } },
 			);
 			return response.data;
 		} catch (error: any) {
@@ -236,16 +242,6 @@ export const getCommissionImportUserQuery = createServerFn({ method: "GET" })
 				errors: error.data?.errors || [],
 			} as ProcessCommissionsResponse;
 		}
-	});
-
-export const commissionImportUserQueryOptions = (userId: string) =>
-	queryOptions({
-		queryKey: ["commission-import-user", userId],
-		queryFn: () => getCommissionImportUserQuery({ data: userId }),
-		enabled: !!userId,
-		staleTime: Infinity,
-		refetchOnWindowFocus: false,
-		refetchOnMount: false,
 	});
 
 export const getAppUserCommissionsCodeQuery = createServerFn({

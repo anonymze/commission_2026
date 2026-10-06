@@ -1,10 +1,9 @@
 import { useForm } from "@tanstack/react-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useRouteContext } from "@tanstack/react-router";
 import {
 	AlertCircle,
 	Calculator,
-	CalendarIcon,
 	ChevronsUpDown,
 	Loader2,
 	Save,
@@ -14,7 +13,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Command,
@@ -45,7 +43,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import {
 	Accordion,
 	AccordionContent,
@@ -53,8 +50,7 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-	commissionImportUserQueryOptions,
-	// createCommissionQuery,
+	generateCommission,
 	updateCommissionSupplierQuery,
 } from "../api/queries/commission-queries";
 import type { PaginatedResponse } from "../types/response";
@@ -92,7 +88,6 @@ export default function CreateCommissionDialog({
 }: CreateCommissionDialogProps) {
 	const { queryClient } = useRouteContext({ from: "/_authed/dashboard" });
 	const [popoverOpen, setPopoverOpen] = useState(false);
-	const [calendarOpen, setCalendarOpen] = useState(false);
 	const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(
 		null,
 	);
@@ -104,27 +99,10 @@ export default function CreateCommissionDialog({
 		mutationFn: updateCommissionSupplierQuery,
 	});
 
-	// const createCommission = useMutation({
-	// 	mutationFn: createCommissionQuery,
-	// 	onSuccess: () => {
-	// 		queryClient.invalidateQueries({ queryKey: ["commissions"] });
-	// 		toast.success("Commission créée avec succès");
-	// 		onOpenChange(false);
-	// 	},
-	// 	onError: (_) => {
-	// 		toast.error(
-	// 			"Une erreur est survenue lors de la création de la commission, recommencez ou contactez le développeur",
-	// 		);
-	// 		form.setFieldValue("app_user", null);
-	// 		setSelectedEmployeeId(null);
-	// 		// onOpenChange(false);
-	// 	},
-	// });
-
 	const form = useForm({
 		defaultValues: {
 			app_user: null as User | null,
-			date: new Date(),
+			month: currentMonth(),
 		},
 		onSubmit: async ({ value }) => {
 			const { app_user } = value;
@@ -169,7 +147,7 @@ export default function CreateCommissionDialog({
 						}),
 				);
 
-				// Invalidate commissions list and close (don't refetch commission-import-user to avoid duplicate)
+				// Refresh the list after saving edits.
 				await queryClient.invalidateQueries({ queryKey: ["commissions"] });
 
 				toast.success("Commission mise à jour avec succès");
@@ -181,24 +159,27 @@ export default function CreateCommissionDialog({
 		},
 	});
 
-	const {
-		data: commissionImportUser,
-		isLoading: loadingCommissions,
-		isFetching,
-		// isError,
-		// error: errorCommissions,
-	} = useQuery({
-		...commissionImportUserQueryOptions(selectedEmployeeId || ""),
+	const generation = useMutation({
+		mutationFn: generateCommission,
+		retry: false,
+		onSuccess: (result) => {
+			if (result.status !== "success") return;
+			setModifiedSuppliers(result.data.commissionSuppliers);
+			void queryClient.invalidateQueries({ queryKey: ["commissions"] });
+		},
+		onError: () => toast.error("Impossible de générer la commission"),
 	});
+	const commissionImportUser = generation.data;
+	const loadingCommissions = generation.isPending;
+	const selectionLocked =
+		loadingCommissions || commissionImportUser?.status === "success";
 
-	// Initialize modifiedSuppliers when commission data is loaded
-	useEffect(() => {
-		if (commissionImportUser && commissionImportUser.status === "success") {
-			setModifiedSuppliers(commissionImportUser.data.commissionSuppliers);
-			// Backend creates commission when loading data, invalidate to show on table
-			queryClient.invalidateQueries({ queryKey: ["commissions"] });
-		}
-	}, [commissionImportUser, queryClient]);
+	const handleGenerate = () => {
+		const { app_user, month } = form.state.values;
+		if (selectionLocked || !app_user || validatePeriod({ value: month }))
+			return;
+		generation.mutate({ data: { userId: app_user.id, month } });
+	};
 
 	// Calculate totals from modified suppliers
 	const calculatedTotals = useMemo(() => {
@@ -276,15 +257,20 @@ export default function CreateCommissionDialog({
 	// Reset dialog state when closing
 	useEffect(() => {
 		if (!open) {
-			queryClient.removeQueries({ queryKey: ["commission-import-user"] });
+			generation.reset();
 			setSelectedEmployeeId(null);
 			setModifiedSuppliers([]);
-			form.reset();
+			form.reset({ app_user: null, month: currentMonth() });
 		}
-	}, [open, form, queryClient]);
+	}, [open, form, generation.reset]);
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={(nextOpen) => {
+				if (!loadingCommissions) onOpenChange(nextOpen);
+			}}
+		>
 			<DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-[90vw] sm:max-w-[90vw] h-[90dvh] flex flex-col gap-4 p-4 sm:p-6">
 				<DialogHeader className="shrink-0 pr-6 text-left">
 					<DialogTitle className="flex items-center gap-2">
@@ -305,58 +291,38 @@ export default function CreateCommissionDialog({
 					className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden"
 				>
 					<div className="min-h-0 min-w-0 flex-1 overflow-y-auto space-y-4 pb-4 [scrollbar-gutter:stable] [color-scheme:light] dark:[color-scheme:dark]">
-						{/* Employee & Date Selection - Always visible */}
+						{/* Employee & Month Selection */}
 						<Card>
 							<CardContent className="space-y-4 px-4 sm:px-6">
-								{/* Period Field */}
 								<form.Field
-									name="date"
-									validators={{
-										onChange: validatePeriod,
-									}}
+									name="month"
+									validators={{ onChange: validatePeriod }}
 								>
 									{(field) => (
 										<div className="space-y-2">
-											<Label>
-												Mois de commission{" "}
+											<Label htmlFor="commission-month">
+												Mois des commissions{" "}
 												<span className="text-red-500">*</span>
 											</Label>
-											<Popover
-												open={calendarOpen}
-												onOpenChange={setCalendarOpen}
+											<Input
+												id="commission-month"
+												type="month"
+												required
+												min="1000-01"
+												max="9999-12"
+												value={field.state.value}
+												disabled={selectionLocked}
+												onChange={(event) =>
+													field.handleChange(event.target.value)
+												}
+												aria-describedby="commission-month-help"
+											/>
+											<p
+												id="commission-month-help"
+												className="text-xs text-muted-foreground"
 											>
-												<PopoverTrigger asChild>
-													<Button
-														variant="outline"
-														className={cn(
-															"w-full justify-start text-left font-normal",
-															!field.state.value && "text-muted-foreground",
-															field.state.meta.errors.length > 0 &&
-																"border-red-500",
-														)}
-													>
-														<CalendarIcon className="mr-2 h-4 w-4" />
-														{field.state.value
-															? field.state.value.toLocaleDateString("fr-FR", {
-																	month: "2-digit",
-																	year: "numeric",
-																})
-															: "Sélectionner le mois"}
-													</Button>
-												</PopoverTrigger>
-												<PopoverContent className="w-auto p-0" align="start">
-													<Calendar
-														mode="single"
-														selected={field.state.value}
-														onSelect={(date) => {
-															if (date) {
-																field.handleChange(date);
-																setCalendarOpen(false);
-															}
-														}}
-													/>
-												</PopoverContent>
-											</Popover>
+												Choisissez le mois concerné par les fichiers importés.
+											</p>
 											{field.state.meta.errors.length > 0 && (
 												<p className="text-sm text-red-500">
 													{field.state.meta.errors[0]}
@@ -386,6 +352,9 @@ export default function CreateCommissionDialog({
 												<PopoverTrigger asChild>
 													<Button
 														variant="outline"
+														id="user-select"
+														type="button"
+														disabled={selectionLocked}
 														role="combobox"
 														aria-expanded={popoverOpen}
 														className="w-full justify-between"
@@ -442,11 +411,39 @@ export default function CreateCommissionDialog({
 										</div>
 									)}
 								</form.Field>
+								{commissionImportUser?.status !== "success" && (
+									<form.Subscribe
+										selector={(state) =>
+											[state.values.app_user, state.values.month] as const
+										}
+									>
+										{([user, month]) => (
+											<Button
+												type="button"
+												onClick={handleGenerate}
+												disabled={
+													!user ||
+													!!validatePeriod({ value: month }) ||
+													loadingCommissions
+												}
+											>
+												{loadingCommissions ? (
+													<Loader2 className="size-4 animate-spin" />
+												) : (
+													<Calculator className="size-4" />
+												)}
+												{loadingCommissions
+													? "Génération…"
+													: "Générer la commission"}
+											</Button>
+										)}
+									</form.Subscribe>
+								)}
 							</CardContent>
 						</Card>
 
 						{/* Loading State - Show during initial load OR refetch */}
-						{(loadingCommissions || isFetching) && (
+						{loadingCommissions && (
 							<Card>
 								<CardContent className="flex items-center justify-center py-8">
 									<div className="flex flex-col items-center gap-3">
@@ -462,7 +459,7 @@ export default function CreateCommissionDialog({
 						{/* Error State (hide during loading/refetch) */}
 						{commissionImportUser &&
 							commissionImportUser.status === "error" &&
-							!isFetching && (
+							!loadingCommissions && (
 								<Card className="border-red-200">
 									<CardHeader>
 										<CardTitle className="text-lg flex items-center gap-2 text-red-600">
@@ -487,7 +484,7 @@ export default function CreateCommissionDialog({
 						{commissionImportUser &&
 							commissionImportUser.status === "success" &&
 							selectedEmployeeId &&
-							!isFetching && (
+							!loadingCommissions && (
 								<>
 									{/* Global Totals */}
 									<Card>
@@ -698,6 +695,7 @@ export default function CreateCommissionDialog({
 						<Button
 							type="button"
 							variant="outline"
+							disabled={loadingCommissions}
 							onClick={() => onOpenChange(false)}
 						>
 							<X className="w-4 h-4 mr-2" />
@@ -715,7 +713,13 @@ const validateUser = ({ value }: { value: User | null }) => {
 	return undefined;
 };
 
-const validatePeriod = ({ value }: { value: Date | undefined }) => {
-	if (!value) return "Le mois est requis";
+const validatePeriod = ({ value }: { value: string }) => {
+	if (!/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value))
+		return "Choisissez un mois valide";
 	return undefined;
 };
+
+function currentMonth() {
+	const now = new Date();
+	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}

@@ -477,7 +477,7 @@ function RouteComponent() {
 										<TableHead className="px-5">Nom et prénom</TableHead>
 										<TableHead className="px-5">Production</TableHead>
 										<TableHead className="px-5">En cours</TableHead>
-										<TableHead className="px-5">Date</TableHead>
+										<TableHead className="px-5">Mois</TableHead>
 										<TableHead className="ml-auto text-right px-5">
 											Actions
 										</TableHead>
@@ -537,9 +537,9 @@ function RouteComponent() {
 											</TableCell>
 											<TableCell className="px-5">
 												{new Date(commission.date).toLocaleDateString("fr-FR", {
-													day: "2-digit",
-													month: "2-digit",
+													month: "long",
 													year: "numeric",
+													timeZone: "UTC",
 												})}
 											</TableCell>
 
