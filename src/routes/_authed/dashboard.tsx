@@ -19,6 +19,7 @@ import {
 	deleteCommissionsQuery,
 	getCommissionExportQuery,
 } from "@/api/queries/commission-queries";
+import { AssociateBadge } from "@/components/associate-badge";
 import { CommissionArchivesDialog } from "@/components/commission-archives-dialog";
 import CreateCommissionDialog from "@/components/commission-dialog";
 import { SearchInput } from "@/components/search-input";
@@ -517,8 +518,13 @@ function RouteComponent() {
 												{commission.app_user.email}
 											</TableCell>
 											<TableCell className="px-5">
-												{commission.app_user.lastname}{" "}
-												{commission.app_user.firstname}
+												<div className="flex items-center gap-2">
+													<span>
+														{commission.app_user.lastname}{" "}
+														{commission.app_user.firstname}
+													</span>
+													<AssociateBadge role={commission.app_user.role} />
+												</div>
 											</TableCell>
 											<TableCell className="px-5 font-semibold text-red-600">
 												{commission.commission_suppliers

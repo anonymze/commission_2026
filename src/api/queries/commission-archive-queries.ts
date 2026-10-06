@@ -15,6 +15,9 @@ const resultSchema = z.object({
 			id: z.string(),
 			date: z.string(),
 			name: z.string(),
+			role: z
+				.enum(["associate", "independent", "employee", "visitor"])
+				.nullish(),
 			superseded: z.boolean().default(false),
 		}),
 	),

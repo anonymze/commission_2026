@@ -12,6 +12,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AssociateBadge } from "@/components/associate-badge";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,12 +50,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
 	generateCommission,
 	updateCommissionSupplierQuery,
@@ -381,10 +382,13 @@ export default function CreateCommissionDialog({
 														aria-expanded={popoverOpen}
 														className="w-full justify-between"
 													>
-														<span className="min-w-0 truncate">
-															{field.state.value
-																? field.state.value.email
-																: "Choisir un utilisateur..."}
+														<span className="flex min-w-0 items-center gap-2">
+															<span className="truncate">
+																{field.state.value
+																	? field.state.value.email
+																	: "Choisir un utilisateur..."}
+															</span>
+															<AssociateBadge role={field.state.value?.role} />
 														</span>
 														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 													</Button>
@@ -408,12 +412,15 @@ export default function CreateCommissionDialog({
 																			handleEmployeeChange(user.id)
 																		}
 																	>
-																		<div className="flex flex-col">
-																			<span className="font-medium">
-																				{displayName}
+																		<div className="flex min-w-0 flex-1 flex-col">
+																			<span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+																				<span className="font-medium">
+																					{displayName}
+																				</span>
+																				<AssociateBadge role={user.role} />
 																			</span>
 																			{fullName && (
-																				<span className="text-xs text-muted-foreground">
+																				<span className="truncate text-xs text-muted-foreground">
 																					{user.email}
 																				</span>
 																			)}

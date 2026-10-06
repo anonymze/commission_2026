@@ -17,6 +17,7 @@ import {
 	deleteAppUserCommissionCodeQuery,
 } from "@/api/queries/commission-queries";
 import { suppliersQueryOptions } from "@/api/queries/supplier-queries";
+import { AssociateBadge } from "@/components/associate-badge";
 import { SearchInput } from "@/components/search-input";
 import { TabSkeleton } from "@/components/tab-skeleton";
 import { Button } from "@/components/ui/button";
@@ -366,10 +367,13 @@ function UsersCodeTab() {
 												value={`${fullName} ${user.email}`}
 												onSelect={() => handleUserAdd(user.id)}
 											>
-												<div className="flex flex-col">
-													<span className="font-medium">{displayName}</span>
+												<div className="flex min-w-0 flex-1 flex-col">
+													<span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+														<span className="font-medium">{displayName}</span>
+														<AssociateBadge role={user.role} />
+													</span>
 													{fullName && (
-														<span className="text-xs text-gray-500">
+														<span className="truncate text-xs text-gray-500">
 															{user.email}
 														</span>
 													)}
@@ -410,10 +414,13 @@ function UsersCodeTab() {
 									>
 										{/* User Header */}
 										<div className="flex flex-col space-y-1 pb-3 border-b border-blue-300">
-											<div className="flex items-center justify-between">
-												<h3 className="text-lg font-semibold text-gray-900">
-													{displayName}
-												</h3>
+											<div className="flex flex-wrap items-center justify-between gap-2">
+												<div className="flex min-w-0 flex-wrap items-center gap-2">
+													<h3 className="text-lg font-semibold text-gray-900">
+														{displayName}
+													</h3>
+													<AssociateBadge role={user?.role} />
+												</div>
 												<span className="text-xs bg-blue-200 px-2 py-1 rounded-full font-medium text-blue-800">
 													{codeCount} {codeCount === 1 ? "code" : "codes"}
 												</span>

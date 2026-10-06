@@ -6,6 +6,7 @@ import {
 	commissionArchivesQueryOptions,
 	restoreCommissionQuery,
 } from "@/api/queries/commission-archive-queries";
+import { AssociateBadge } from "@/components/associate-badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -176,7 +177,10 @@ export function CommissionArchivesDialog({
 								archives.data.docs.map((doc) => (
 									<TableRow key={doc.id}>
 										<TableCell className="font-medium whitespace-normal">
-											{doc.name}
+											<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+												<span>{doc.name}</span>
+												<AssociateBadge role={doc.role} />
+											</div>
 											{doc.superseded && (
 												<span className="block text-xs font-normal text-muted-foreground">
 													Remplacée · Exclue du cumul
