@@ -285,8 +285,8 @@ export default function CreateCommissionDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="w-[90vw] max-w-[90vw] sm:max-w-[90vw] h-[90vh] flex flex-col">
-				<DialogHeader>
+			<DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:w-[90vw] sm:max-w-[90vw] h-[90dvh] flex flex-col gap-4 p-4 sm:p-6">
+				<DialogHeader className="shrink-0 pr-6 text-left">
 					<DialogTitle className="flex items-center gap-2">
 						<Calculator className="w-5 h-5" />
 						Créer une commission
@@ -302,12 +302,12 @@ export default function CreateCommissionDialog({
 						e.stopPropagation();
 						form.handleSubmit();
 					}}
-					className="flex-1 flex flex-col overflow-hidden"
+					className="min-h-0 min-w-0 flex-1 flex flex-col overflow-hidden"
 				>
-					<div className="flex-1 overflow-y-auto p-0 space-y-4">
+					<div className="min-h-0 min-w-0 flex-1 overflow-y-auto space-y-4 pb-4 [scrollbar-gutter:stable] [color-scheme:light] dark:[color-scheme:dark]">
 						{/* Employee & Date Selection - Always visible */}
 						<Card>
-							<CardContent className="space-y-4">
+							<CardContent className="space-y-4 px-4 sm:px-6">
 								{/* Period Field */}
 								<form.Field
 									name="date"
@@ -390,9 +390,11 @@ export default function CreateCommissionDialog({
 														aria-expanded={popoverOpen}
 														className="w-full justify-between"
 													>
-														{field.state.value
-															? field.state.value.email
-															: "Choisir un utilisateur..."}
+														<span className="min-w-0 truncate">
+															{field.state.value
+																? field.state.value.email
+																: "Choisir un utilisateur..."}
+														</span>
 														<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 													</Button>
 												</PopoverTrigger>
@@ -420,7 +422,7 @@ export default function CreateCommissionDialog({
 																				{displayName}
 																			</span>
 																			{fullName && (
-																				<span className="text-xs text-gray-500">
+																				<span className="text-xs text-muted-foreground">
 																					{user.email}
 																				</span>
 																			)}
@@ -449,7 +451,7 @@ export default function CreateCommissionDialog({
 								<CardContent className="flex items-center justify-center py-8">
 									<div className="flex flex-col items-center gap-3">
 										<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-										<p className="text-sm text-gray-600">
+										<p className="text-sm text-muted-foreground">
 											Chargement des calculs de commission...
 										</p>
 									</div>
@@ -493,19 +495,19 @@ export default function CreateCommissionDialog({
 											<CardTitle className="text-lg">Totaux Globaux</CardTitle>
 										</CardHeader>
 										<CardContent>
-											<div className="grid grid-cols-2 gap-4">
+											<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 												<div className="space-y-2">
 													<Label>Production</Label>
-													<div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-														<span className="text-2xl font-bold text-orange-600">
+													<div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-900">
+														<span className="text-2xl font-bold tabular-nums break-all text-orange-600 dark:text-orange-400">
 															{calculatedTotals.production.toFixed(2)}€
 														</span>
 													</div>
 												</div>
 												<div className="space-y-2">
 													<Label>Encours</Label>
-													<div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-														<span className="text-2xl font-bold text-blue-600">
+													<div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+														<span className="text-2xl font-bold tabular-nums break-all text-blue-600 dark:text-blue-400">
 															{calculatedTotals.encours.toFixed(2)}€
 														</span>
 													</div>
@@ -538,22 +540,22 @@ export default function CreateCommissionDialog({
 												<AccordionItem
 													key={supplier.id}
 													value={supplier.id}
-													className="border rounded-lg px-4 last:border-b"
+													className="min-w-0 border rounded-lg px-3 sm:px-4 last:border-b"
 												>
-													<AccordionTrigger className="hover:no-underline">
-														<div className="flex items-center gap-6 text-left">
-															<span className="font-semibold">
+													<AccordionTrigger className="min-w-0 hover:no-underline">
+														<div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-left">
+															<span className="basis-full break-words font-semibold sm:basis-auto">
 																{supplier.supplier.name}
 															</span>
 															<span className="text-sm text-muted-foreground">
 																Production:{" "}
-																<strong className="text-red-600">
+																<strong className="text-red-600 dark:text-red-400">
 																	{supplierProductionTotal.toFixed(2)}€
 																</strong>
 															</span>
 															<span className="text-sm text-muted-foreground">
 																Encours:{" "}
-																<strong className="text-blue-600">
+																<strong className="text-blue-600 dark:text-blue-400">
 																	{supplierEncoursTotal.toFixed(2)}€
 																</strong>
 															</span>
@@ -599,7 +601,7 @@ export default function CreateCommissionDialog({
 																			<TableCell>{line.rowIndex + 1}</TableCell>
 																			<TableCell>
 																				<span
-																					className={`font-semibold ${isProduction ? "text-red-600" : "text-blue-600"}`}
+																					className={`font-semibold ${isProduction ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}`}
 																				>
 																					{isProduction
 																						? "Production"
@@ -667,13 +669,14 @@ export default function CreateCommissionDialog({
 					</div>
 
 					{/* Action Buttons */}
-					<div className="flex items-center justify-between p-4 border-t bg-gray-50">
+					<div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/50 p-3 sm:p-4">
 						<Button
 							type="submit"
 							disabled={
 								form.state.isSubmitting ||
-								!modifiedSuppliers.some((supplier) =>
-									!supplier.sheet_lines.some((line) => line.source === "pdf"),
+								!modifiedSuppliers.some(
+									(supplier) =>
+										!supplier.sheet_lines.some((line) => line.source === "pdf"),
 								) ||
 								loadingCommissions ||
 								!commissionImportUser ||
