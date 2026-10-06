@@ -11,7 +11,12 @@ const filtersSchema = z.object({
 
 const resultSchema = z.object({
 	docs: z.array(
-		z.object({ id: z.string(), date: z.string(), name: z.string() }),
+		z.object({
+			id: z.string(),
+			date: z.string(),
+			name: z.string(),
+			superseded: z.boolean().default(false),
+		}),
 	),
 	page: z.number(),
 	totalPages: z.number(),

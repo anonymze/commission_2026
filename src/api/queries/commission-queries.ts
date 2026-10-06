@@ -224,13 +224,14 @@ export const generateCommission = createServerFn({ method: "POST" })
 		z.object({
 			userId: z.string().uuid(),
 			month: z.string().regex(/^[1-9]\d{3}-(0[1-9]|1[0-2])$/),
+			replaceId: z.string().uuid().optional(),
 		}),
 	)
-	.handler(async ({ data: { userId, month } }) => {
+	.handler(async ({ data: { userId, month, replaceId } }) => {
 		try {
 			const response = await api.get<ProcessCommissionsResponse>(
 				`/api/commission-imports/${userId}`,
-				{ params: { month } },
+				{ params: { month, ...(replaceId ? { replaceId } : {}) } },
 			);
 			return response.data;
 		} catch (error: any) {
@@ -239,6 +240,7 @@ export const generateCommission = createServerFn({ method: "POST" })
 				status: "error",
 				message: error.data?.message || error.message || "Erreur inconnue",
 				code: error.data?.code || "INTERNAL_ERROR",
+				existingCommissionId: error.data?.existingCommissionId,
 				errors: error.data?.errors || [],
 			} as ProcessCommissionsResponse;
 		}

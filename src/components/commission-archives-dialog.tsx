@@ -177,6 +177,11 @@ export function CommissionArchivesDialog({
 									<TableRow key={doc.id}>
 										<TableCell className="font-medium whitespace-normal">
 											{doc.name}
+											{doc.superseded && (
+												<span className="block text-xs font-normal text-muted-foreground">
+													Remplacée · Exclue du cumul
+												</span>
+											)}
 										</TableCell>
 										<TableCell className="whitespace-normal sm:whitespace-nowrap">
 											{new Date(doc.date).toLocaleDateString("fr-FR", {
@@ -200,19 +205,21 @@ export function CommissionArchivesDialog({
 														{exportingId === doc.id ? "Export..." : "Exporter"}
 													</span>
 												</Button>
-												<Button
-													variant="outline"
-													size="sm"
-													aria-label={`Restaurer la commission de ${doc.name}`}
-													className="px-2 sm:px-3"
-													disabled={restore.isPending}
-													onClick={() =>
-														setConfirmation({ id: doc.id, name: doc.name })
-													}
-												>
-													<RotateCcwIcon className="size-4" />
-													<span className="hidden sm:inline">Restaurer</span>
-												</Button>
+												{!doc.superseded && (
+													<Button
+														variant="outline"
+														size="sm"
+														aria-label={`Restaurer la commission de ${doc.name}`}
+														className="px-2 sm:px-3"
+														disabled={restore.isPending}
+														onClick={() =>
+															setConfirmation({ id: doc.id, name: doc.name })
+														}
+													>
+														<RotateCcwIcon className="size-4" />
+														<span className="hidden sm:inline">Restaurer</span>
+													</Button>
+												)}
 											</div>
 										</TableCell>
 									</TableRow>

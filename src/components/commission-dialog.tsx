@@ -95,6 +95,12 @@ export default function CreateCommissionDialog({
 		ModifiedCommissionSupplier[]
 	>([]);
 
+	const [replacement, setReplacement] = useState<{
+		userId: string;
+		month: string;
+		replaceId: string;
+	} | null>(null);
+
 	const updateSupplier = useMutation({
 		mutationFn: updateCommissionSupplierQuery,
 	});
@@ -162,8 +168,21 @@ export default function CreateCommissionDialog({
 	const generation = useMutation({
 		mutationFn: generateCommission,
 		retry: false,
-		onSuccess: (result) => {
-			if (result.status !== "success") return;
+		onSuccess: (result, variables) => {
+			if (result.status === "error") {
+				setReplacement(null);
+				if (
+					result.code === "MONTHLY_COMMISSION_EXISTS" &&
+					result.existingCommissionId
+				) {
+					setReplacement({
+						...variables.data,
+						replaceId: result.existingCommissionId,
+					});
+				}
+				return;
+			}
+			setReplacement(null);
 			setModifiedSuppliers(result.data.commissionSuppliers);
 			void queryClient.invalidateQueries({ queryKey: ["commissions"] });
 		},
@@ -172,7 +191,9 @@ export default function CreateCommissionDialog({
 	const commissionImportUser = generation.data;
 	const loadingCommissions = generation.isPending;
 	const selectionLocked =
-		loadingCommissions || commissionImportUser?.status === "success";
+		loadingCommissions ||
+		!!replacement ||
+		commissionImportUser?.status === "success";
 
 	const handleGenerate = () => {
 		const { app_user, month } = form.state.values;
@@ -258,6 +279,7 @@ export default function CreateCommissionDialog({
 	useEffect(() => {
 		if (!open) {
 			generation.reset();
+			setReplacement(null);
 			setSelectedEmployeeId(null);
 			setModifiedSuppliers([]);
 			form.reset({ app_user: null, month: currentMonth() });
@@ -411,7 +433,7 @@ export default function CreateCommissionDialog({
 										</div>
 									)}
 								</form.Field>
-								{commissionImportUser?.status !== "success" && (
+								{commissionImportUser?.status !== "success" && !replacement && (
 									<form.Subscribe
 										selector={(state) =>
 											[state.values.app_user, state.values.month] as const
@@ -442,6 +464,54 @@ export default function CreateCommissionDialog({
 							</CardContent>
 						</Card>
 
+						{replacement && (
+							<div
+								role="alert"
+								className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+							>
+								<p className="text-sm font-medium">
+									Une synthèse existe déjà pour{" "}
+									{new Date(
+										`${replacement.month}-01T00:00:00Z`,
+									).toLocaleDateString("fr-FR", {
+										month: "long",
+										year: "numeric",
+										timeZone: "UTC",
+									})}
+									.
+								</p>
+								<p className="text-sm">
+									La nouvelle synthèse remplacera celle de cet indépendant pour
+									ce mois. L’ancienne restera consultable dans les archives et
+									sera exclue du cumul annuel.
+								</p>
+								<div className="flex flex-wrap gap-2">
+									<Button
+										type="button"
+										size="sm"
+										disabled={loadingCommissions}
+										onClick={() => generation.mutate({ data: replacement })}
+									>
+										{loadingCommissions
+											? "Remplacement…"
+											: "Confirmer le remplacement"}
+									</Button>
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										disabled={loadingCommissions}
+										onClick={() => {
+											setReplacement(null);
+											generation.reset();
+										}}
+									>
+										Annuler
+									</Button>
+								</div>
+							</div>
+						)}
+
 						{/* Loading State - Show during initial load OR refetch */}
 						{loadingCommissions && (
 							<Card>
@@ -459,6 +529,7 @@ export default function CreateCommissionDialog({
 						{/* Error State (hide during loading/refetch) */}
 						{commissionImportUser &&
 							commissionImportUser.status === "error" &&
+							!replacement &&
 							!loadingCommissions && (
 								<Card className="border-red-200">
 									<CardHeader>

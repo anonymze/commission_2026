@@ -116,7 +116,9 @@ interface SuccessResponseCommission {
 interface ErrorResponseCommission {
   status: "error";
   message: string;
+  existingCommissionId?: string | null;
   code?:
+    | "MONTHLY_COMMISSION_EXISTS"
     | "NO_USER_CODES"
     | "NO_IMPORTS"
     | "VALIDATION_ERRORS"
