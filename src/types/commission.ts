@@ -1,4 +1,5 @@
 import type { Media } from "./media";
+import type { PdfReview } from "./pdf-review";
 import type { Supplier } from "./supplier";
 import type { AppUser, User } from "./user";
 
@@ -71,6 +72,7 @@ export interface CommissionImport {
   supplier?: string | Supplier | null;
   files: {
     file: string | Media;
+    pdfExtraction?: { review?: PdfReview; status?: string } | null;
     id?: string | null;
   }[];
   entry: "production" | "encours" | "production_encours";
@@ -103,7 +105,7 @@ interface SuccessResponseCommission {
         amount: number;
         verificationKeyword: string;
         fullRow: any[];
-        type?: 'production' | 'encours';
+        type?: "production" | "encours";
       }>;
     }>;
   };

@@ -20,7 +20,9 @@ import {
 	deleteCommissionImportQuery,
 	getCommissionsImportQuery,
 } from "@/api/queries/commission-queries";
+import { analyzePdfReview } from "@/api/queries/pdf-review-queries";
 import { suppliersQueryOptions } from "@/api/queries/supplier-queries";
+import { PdfReviewDialog } from "@/components/pdf-review-dialog";
 import { SearchInput } from "@/components/search-input";
 import { TabSkeleton } from "@/components/tab-skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -48,6 +50,7 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import type { CommissionImport } from "@/types/commission";
+import type { PdfTarget } from "@/types/pdf-review";
 
 const allowedTypes = [
 	"text/csv",
@@ -106,6 +109,12 @@ function RouteComponent() {
 	const [supplierOpen, setSupplierOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isDragging, setIsDragging] = useState(false);
+	const [pdfTarget, setPdfTarget] = useState<PdfTarget | null>(null);
+	const [analysisProgress, setAnalysisProgress] = useState<{
+		current: number;
+		total: number;
+		stage: "upload" | "analysis";
+	} | null>(null);
 	const isPdfMode = selectedSupplier === PDF_MODE;
 
 	const { data: commissionImports } = useSuspenseQuery(
@@ -116,14 +125,86 @@ function RouteComponent() {
 
 	// Mutations
 	const createImportMutation = useMutation({
-		mutationFn: createCommissionImportQuery,
-		onSuccess: (result) => {
+		mutationFn: async ({
+			files,
+			supplier,
+			entry,
+		}: {
+			files: File[];
+			supplier: string;
+			entry: EntryType;
+		}) => {
+			const pdf = supplier === PDF_MODE;
+			const result = {
+				uploaded: 0,
+				failed: 0,
+				failedFiles: [] as string[],
+				pdfFiles: [] as PdfTarget[],
+			};
+			const batches = pdf ? files.map((file) => [file]) : [files];
+			for (const [index, batch] of batches.entries()) {
+				if (pdf)
+					setAnalysisProgress({
+						current: index + 1,
+						total: files.length,
+						stage: "upload",
+					});
+				const data = new FormData();
+				data.set(pdf ? "mode" : "supplier", pdf ? "pdf" : supplier);
+				data.set("entry", entry);
+				for (const file of batch) data.append("files", file);
+				try {
+					const uploaded = await createCommissionImportQuery({ data });
+					result.uploaded += uploaded.uploaded;
+					result.failed += uploaded.failed;
+					result.failedFiles.push(...(uploaded.failedFiles || []));
+					result.pdfFiles.push(...(uploaded.pdfFiles || []));
+				} catch (error) {
+					if (!pdf) throw error;
+					result.failed += batch.length;
+					result.failedFiles.push(...batch.map((file) => file.name));
+				}
+				await queryClient.invalidateQueries({
+					queryKey: ["commissions-import"],
+				});
+			}
+			return result;
+		},
+		onSuccess: async (result) => {
 			queryClient.invalidateQueries({ queryKey: ["commissions-import"] });
 			toast.success(`${result.uploaded} fichier(s) importé(s)`);
 			if (result.failed > 0) {
 				toast.error(
 					`Fichiers non importés : ${result.failedFiles?.join(", ")}`,
 				);
+			}
+			const pdfFiles: PdfTarget[] = result.pdfFiles || [];
+			let failed = 0;
+			try {
+				for (const [index, target] of pdfFiles.entries()) {
+					setAnalysisProgress({
+						current: index + 1,
+						total: pdfFiles.length,
+						stage: "analysis",
+					});
+					try {
+						const analyzed = await analyzePdfReview({ data: target });
+						if (analyzed.review.status === "failed") failed++;
+					} catch {
+						failed++;
+					}
+					await queryClient.invalidateQueries({
+						queryKey: ["commissions-import"],
+					});
+				}
+				if (pdfFiles.length)
+					toast.success(`${pdfFiles.length - failed} PDF prêt(s) à vérifier`);
+				if (failed)
+					toast.error(
+						`${failed} PDF à reprendre : les fichiers sont conservés.`,
+					);
+			} finally {
+				setAnalysisProgress(null);
 			}
 		},
 		onError: () => {
@@ -157,7 +238,10 @@ function RouteComponent() {
 		const isPdf =
 			file.type === "application/pdf" ||
 			file.name.toLowerCase().endsWith(".pdf");
-		if (isPdfMode) return isPdf ? null : "Ce mode accepte uniquement des PDF";
+		if (isPdfMode) {
+			if (file.size > 20 * 1024 * 1024) return "Le PDF dépasse 20 Mo";
+			return isPdf ? null : "Ce mode accepte uniquement des PDF";
+		}
 		if (isPdf) return "Choisissez Importer des PDF dans le sélecteur";
 		const hasValidType = allowedTypes.includes(file.type);
 		const hasValidExtension = allowedExtensions.some((ext) =>
@@ -181,6 +265,10 @@ function RouteComponent() {
 
 		// Convert FileList to array
 		const fileArray = Array.from(files);
+		if (isPdfMode && fileArray.length > 50) {
+			toast.error("Importez au maximum 50 PDF à la fois");
+			return;
+		}
 
 		// Validate all files first
 		for (const file of fileArray) {
@@ -191,26 +279,11 @@ function RouteComponent() {
 			}
 		}
 
-		// Create single FormData with all files
-		const formData = new FormData();
-		if (isPdfMode) formData.append("mode", "pdf");
-		else formData.append("supplier", selectedSupplier);
-		formData.append("entry", selectedEntry);
-
-		// Append all files using "files" field name
-		for (const file of fileArray) {
-			formData.append("files", file);
-		}
-
-		console.log("Uploading batch:", {
+		createImportMutation.mutate({
+			files: fileArray,
 			supplier: selectedSupplier,
 			entry: selectedEntry,
-			fileCount: fileArray.length,
-			filenames: fileArray.map((f) => f.name),
 		});
-
-		// Single mutation call for all files
-		createImportMutation.mutate({ data: formData });
 	};
 
 	const handleSelectSupplier = (supplierId: string) => {
@@ -244,10 +317,7 @@ function RouteComponent() {
 
 		Object.entries(grouped).forEach(([supplierId, imports]) => {
 			const supplier = allSuppliers.find((s) => s.id === supplierId);
-			const label =
-				supplierId === PDF_MODE
-					? "PDF - Fournisseur à identifier"
-					: supplier?.name;
+			const label = supplierId === PDF_MODE ? "Relevés PDF" : supplier?.name;
 			if (label?.toLowerCase().includes(lowerQuery)) {
 				filtered[supplierId] = imports;
 			}
@@ -266,6 +336,12 @@ function RouteComponent() {
 
 	return (
 		<Card>
+			{pdfTarget && (
+				<PdfReviewDialog
+					target={pdfTarget}
+					onClose={() => setPdfTarget(null)}
+				/>
+			)}
 			<CardHeader className="gap-0">
 				<div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
 					<div className="flex flex-col gap-2">
@@ -332,10 +408,10 @@ function RouteComponent() {
 				<Alert className="items-center">
 					<BookAlertIcon className="h-4 w-4" />
 					<AlertDescription>
-						Les PDF peuvent provenir de fournisseurs différents. Ils sont
-						conservés sans fournisseur, en attente d'extraction, hors calcul des
-						commissions. Les fichiers Excel s'ajoutent aux imports du
-						fournisseur choisi.
+						Les PDF peuvent provenir de fournisseurs différents. Leur lecture
+						prépare les données et les correspondances à vérifier. Enregistrez
+						et validez chaque relevé pour l’utiliser dans les commissions. Les
+						fichiers Excel s’ajoutent au fournisseur choisi.
 					</AlertDescription>
 				</Alert>
 
@@ -429,12 +505,16 @@ function RouteComponent() {
 								)}
 								<span className="text-sm text-muted-foreground">
 									{isUploading
-										? "Import en cours..."
+										? analysisProgress
+											? `${analysisProgress.stage === "upload" ? "Importation" : "Analyse"} du PDF ${analysisProgress.current} sur ${analysisProgress.total}…`
+											: "Import en cours..."
 										: "Déposer vos fichiers ici ou cliquer pour les sélectionner"}
 								</span>
 								<span className="text-xs text-muted-foreground">
-									{isPdfMode ? "PDF uniquement" : "CSV, XLS, XLSX ou ODS"} ·
-									Plusieurs fichiers possibles
+									{isPdfMode
+										? "PDF · 20 Mo / fichier · 20 pages pour l’analyse"
+										: "CSV, XLS, XLSX ou ODS"}{" "}
+									· Plusieurs fichiers possibles
 								</span>
 								<Badge variant="outline">
 									{isPdfMode
@@ -463,7 +543,7 @@ function RouteComponent() {
 									);
 									const supplierName =
 										supplierId === PDF_MODE
-											? "PDF - Fournisseur à identifier"
+											? "Relevés PDF"
 											: supplier?.name || "Fournisseur indisponible";
 
 									// Calculate total files for this supplier
@@ -515,9 +595,14 @@ function RouteComponent() {
 														</div>
 														{/* Display all files for this import */}
 														<div className="space-y-1">
-															{importItem.files?.map((fileItem, idx) => (
+															{importItem.files?.map((fileItem) => (
 																<div
-																	key={idx}
+																	key={
+																		fileItem.id ||
+																		(typeof fileItem.file === "string"
+																			? fileItem.file
+																			: fileItem.file.id)
+																	}
 																	className="flex flex-wrap items-center gap-2 text-sm text-foreground"
 																>
 																	<Upload className="h-4 w-4 text-green-600" />
@@ -533,9 +618,48 @@ function RouteComponent() {
 																			fileItem.file?.filename
 																				?.toLowerCase()
 																				.endsWith(".pdf")) && (
-																			<Badge variant="secondary">
-																				PDF · En attente d'extraction
-																			</Badge>
+																			<>
+																				<Badge
+																					variant={
+																						fileItem.pdfExtraction?.review
+																							?.status === "validated"
+																							? "default"
+																							: "secondary"
+																					}
+																				>
+																					{fileItem.pdfExtraction?.review
+																						?.status === "validated"
+																						? "PDF · Validé"
+																						: fileItem.pdfExtraction?.review
+																									?.status === "draft"
+																							? "PDF · À vérifier"
+																							: fileItem.pdfExtraction?.review
+																										?.status === "processing"
+																								? "PDF · Analyse en cours"
+																								: fileItem.pdfExtraction?.review
+																											?.status === "failed"
+																									? "PDF · Analyse à reprendre"
+																									: "PDF · À analyser"}
+																				</Badge>
+																				{fileItem.id && (
+																					<Button
+																						variant="outline"
+																						size="sm"
+																						className="h-7"
+																						onClick={() =>
+																							setPdfTarget({
+																								importId: importItem.id,
+																								fileId: fileItem.id || "",
+																							})
+																						}
+																					>
+																						{fileItem.pdfExtraction?.review
+																							?.status === "validated"
+																							? "Consulter / modifier"
+																							: "Vérifier"}
+																					</Button>
+																				)}
+																			</>
 																		)}
 																</div>
 															))}
