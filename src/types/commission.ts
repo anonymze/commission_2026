@@ -68,7 +68,7 @@ export interface SuppliersCommissionsColumn {
 
 export interface CommissionImport {
   id: string;
-  supplier: string | Supplier;
+  supplier?: string | Supplier | null;
   files: {
     file: string | Media;
     id?: string | null;

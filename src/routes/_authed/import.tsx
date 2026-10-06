@@ -56,6 +56,7 @@ const allowedTypes = [
 	"application/vnd.oasis.opendocument.spreadsheet",
 ];
 const allowedExtensions = [".csv", ".xls", ".xlsx", ".ods"];
+const PDF_MODE = "pdf-unassigned";
 
 type EntryType = CommissionImport["entry"];
 
@@ -104,6 +105,8 @@ function RouteComponent() {
 	const [selectedEntry, setSelectedEntry] = useState<EntryType | null>(null);
 	const [supplierOpen, setSupplierOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
+	const [isDragging, setIsDragging] = useState(false);
+	const isPdfMode = selectedSupplier === PDF_MODE;
 
 	const { data: commissionImports } = useSuspenseQuery(
 		commissionsImportQueryOptions(),
@@ -114,10 +117,14 @@ function RouteComponent() {
 	// Mutations
 	const createImportMutation = useMutation({
 		mutationFn: createCommissionImportQuery,
-		onSuccess: () => {
+		onSuccess: (result) => {
 			queryClient.invalidateQueries({ queryKey: ["commissions-import"] });
-			// Keep selection to allow multiple uploads for same supplier/entry
-			// Toast handled in handleFileUpload for bulk imports
+			toast.success(`${result.uploaded} fichier(s) importé(s)`);
+			if (result.failed > 0) {
+				toast.error(
+					`Fichiers non importés : ${result.failedFiles?.join(", ")}`,
+				);
+			}
 		},
 		onError: () => {
 			toast.error("Erreur lors de l'importation du fichier");
@@ -147,6 +154,11 @@ function RouteComponent() {
 	}, [existingImports]);
 
 	const validateFile = (file: File): string | null => {
+		const isPdf =
+			file.type === "application/pdf" ||
+			file.name.toLowerCase().endsWith(".pdf");
+		if (isPdfMode) return isPdf ? null : "Ce mode accepte uniquement des PDF";
+		if (isPdf) return "Choisissez Importer des PDF dans le sélecteur";
 		const hasValidType = allowedTypes.includes(file.type);
 		const hasValidExtension = allowedExtensions.some((ext) =>
 			file.name.toLowerCase().endsWith(ext),
@@ -160,6 +172,8 @@ function RouteComponent() {
 	};
 
 	const handleFileUpload = (files: FileList | null) => {
+		if (createImportMutation.isPending || deleteImportMutation.isPending)
+			return;
 		if (!selectedSupplier || !selectedEntry || !files || files.length === 0) {
 			toast.error("Veuillez sélectionner un fournisseur et un type d'entrée");
 			return;
@@ -179,7 +193,8 @@ function RouteComponent() {
 
 		// Create single FormData with all files
 		const formData = new FormData();
-		formData.append("supplier", selectedSupplier);
+		if (isPdfMode) formData.append("mode", "pdf");
+		else formData.append("supplier", selectedSupplier);
 		formData.append("entry", selectedEntry);
 
 		// Append all files using "files" field name
@@ -213,7 +228,8 @@ function RouteComponent() {
 		const grouped: Record<string, CommissionImport[]> = {};
 		existingImports.forEach((imp) => {
 			const supplierId =
-				typeof imp.supplier === "string" ? imp.supplier : imp.supplier.id;
+				(typeof imp.supplier === "string" ? imp.supplier : imp.supplier?.id) ||
+				PDF_MODE;
 			if (!grouped[supplierId]) {
 				grouped[supplierId] = [];
 			}
@@ -228,7 +244,11 @@ function RouteComponent() {
 
 		Object.entries(grouped).forEach(([supplierId, imports]) => {
 			const supplier = allSuppliers.find((s) => s.id === supplierId);
-			if (supplier?.name.toLowerCase().includes(lowerQuery)) {
+			const label =
+				supplierId === PDF_MODE
+					? "PDF - Fournisseur à identifier"
+					: supplier?.name;
+			if (label?.toLowerCase().includes(lowerQuery)) {
 				filtered[supplierId] = imports;
 			}
 		});
@@ -244,18 +264,6 @@ function RouteComponent() {
 	const isDeleting = deleteImportMutation.isPending;
 	const isOperating = isUploading || isDeleting;
 
-	if (!suppliers || !suppliers.docs.length) {
-		return (
-			<Card>
-				<CardContent className="p-6 flex items-center justify-center">
-					<p className="text-gray-600">
-						Il n'y a pas de fournisseur disponible
-					</p>
-				</CardContent>
-			</Card>
-		);
-	}
-
 	return (
 		<Card>
 			<CardHeader className="gap-0">
@@ -266,8 +274,8 @@ function RouteComponent() {
 							Importation des fichiers de commissions
 						</CardTitle>
 						<CardDescription>
-							Importez des fichiers de commissions par fournisseur et type
-							d'entrée
+							Choisissez un fournisseur pour Excel, ou importez vos PDF
+							ensemble.
 						</CardDescription>
 					</div>
 					{isOperating && (
@@ -282,16 +290,25 @@ function RouteComponent() {
 								className="w-full justify-between sm:w-auto sm:min-w-[220px]"
 								disabled={isOperating}
 							>
-								Ajouter un fournisseur
+								{isPdfMode
+									? "Importer des PDF"
+									: selectedSupplierData?.name || "Choisir un import"}
 								<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
 							</Button>
 						</PopoverTrigger>
 						<PopoverContent className="w-[300px] p-0">
 							<Command>
-								<CommandInput placeholder="Rechercher un fournisseur..." />
+								<CommandInput placeholder="Fournisseur ou PDF..." />
 								<CommandList>
 									<CommandEmpty>Aucun fournisseur trouvé.</CommandEmpty>
 									<CommandGroup className="max-h-[230px] overflow-auto">
+										<CommandItem
+											value="Importer des PDF sans fournisseur"
+											onSelect={() => handleSelectSupplier(PDF_MODE)}
+										>
+											<FileIcon className="mr-2 h-4 w-4" />
+											Importer des PDF
+										</CommandItem>
 										{allSuppliers.map((supplier) => (
 											<CommandItem
 												key={supplier.id}
@@ -315,9 +332,10 @@ function RouteComponent() {
 				<Alert className="items-center">
 					<BookAlertIcon className="h-4 w-4" />
 					<AlertDescription>
-						Les commissions seront basées sur les derniers fichiers importés
-						ici. Vous pouvez importer plusieurs fichiers par fournisseur selon
-						le type d'entrée.
+						Les PDF peuvent provenir de fournisseurs différents. Ils sont
+						conservés sans fournisseur, en attente d'extraction, hors calcul des
+						commissions. Les fichiers Excel s'ajoutent aux imports du
+						fournisseur choisi.
 					</AlertDescription>
 				</Alert>
 
@@ -327,7 +345,7 @@ function RouteComponent() {
 				{selectedSupplier && (
 					<div className="space-y-2.5">
 						<Label>2. Choisir le type d'entrée</Label>
-						<div className="grid grid-cols-3 gap-3">
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 							<Button
 								variant={selectedEntry === "production" ? "default" : "outline"}
 								onClick={() => setSelectedEntry("production")}
@@ -362,16 +380,41 @@ function RouteComponent() {
 				{selectedSupplier && selectedEntry && (
 					<div className="space-y-2.5">
 						<Label>3. Importer le(s) fichier(s)</Label>
-						<div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+						<fieldset
+							aria-label="Importer des fichiers"
+							onDragOver={(event) => {
+								event.preventDefault();
+								if (!isOperating) setIsDragging(true);
+							}}
+							onDragLeave={(event) => {
+								if (
+									!event.currentTarget.contains(
+										event.relatedTarget as Node | null,
+									)
+								) {
+									setIsDragging(false);
+								}
+							}}
+							onDrop={(event) => {
+								event.preventDefault();
+								setIsDragging(false);
+								handleFileUpload(event.dataTransfer.files);
+							}}
+							className={`relative min-w-0 border-2 border-dashed rounded-lg p-6 text-center focus-within:ring-2 focus-within:ring-ring ${isDragging ? "border-primary bg-accent" : "border-border"} ${isOperating ? "opacity-50" : ""}`}
+						>
 							<input
 								type="file"
-								accept=".csv,.xlsx,.xls"
+								accept={
+									isPdfMode
+										? ".pdf,application/pdf"
+										: allowedExtensions.join(",")
+								}
 								multiple
 								onChange={(e) => {
 									handleFileUpload(e.target.files);
 									e.target.value = ""; // Reset input to allow re-upload
 								}}
-								className="hidden"
+								className="sr-only"
 								id="file-upload"
 								disabled={isOperating}
 							/>
@@ -379,19 +422,32 @@ function RouteComponent() {
 								htmlFor="file-upload"
 								className="cursor-pointer flex flex-col items-center gap-2"
 							>
-								<Upload className="h-8 w-8 text-gray-400" />
-								<span className="text-sm text-gray-600">
-									Cliquer pour choisir un ou plusieurs fichiers CSV, XLS ou XLSX
+								{isUploading ? (
+									<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+								) : (
+									<Upload className="h-8 w-8 text-muted-foreground" />
+								)}
+								<span className="text-sm text-muted-foreground">
+									{isUploading
+										? "Import en cours..."
+										: "Déposer vos fichiers ici ou cliquer pour les sélectionner"}
+								</span>
+								<span className="text-xs text-muted-foreground">
+									{isPdfMode ? "PDF uniquement" : "CSV, XLS, XLSX ou ODS"} ·
+									Plusieurs fichiers possibles
 								</span>
 								<Badge variant="outline">
-									{selectedSupplierData?.name} -{" "}
+									{isPdfMode
+										? "PDF sans fournisseur"
+										: selectedSupplierData?.name}{" "}
+									-{" "}
 									{selectedEntry === "production_encours"
 										? "Production + Encours"
 										: selectedEntry.charAt(0).toUpperCase() +
 											selectedEntry.slice(1)}
 								</Badge>
 							</label>
-						</div>
+						</fieldset>
 					</div>
 				)}
 
@@ -405,7 +461,10 @@ function RouteComponent() {
 									const supplier = allSuppliers.find(
 										(s) => s.id === supplierId,
 									);
-									if (!supplier) return null;
+									const supplierName =
+										supplierId === PDF_MODE
+											? "PDF - Fournisseur à identifier"
+											: supplier?.name || "Fournisseur indisponible";
 
 									// Calculate total files for this supplier
 									const totalFiles = imports.reduce(
@@ -416,12 +475,12 @@ function RouteComponent() {
 									return (
 										<div
 											key={supplierId}
-											className="p-4 bg-linear-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg space-y-3"
+											className="p-4 bg-accent/40 border border-border rounded-lg space-y-3"
 										>
 											{/* Supplier Header */}
 											<div className="flex items-center justify-between">
 												<span className="text-sm font-semibold">
-													{supplier.name}
+													{supplierName}
 												</span>
 												<Badge variant="secondary">
 													{totalFiles} fichier(s)
@@ -433,7 +492,7 @@ function RouteComponent() {
 												{imports.map((importItem) => (
 													<div
 														key={importItem.id}
-														className="p-3 bg-white rounded border border-gray-200 space-y-2"
+														className="p-3 bg-card rounded border border-border space-y-2"
 													>
 														<div className="flex items-center justify-between">
 															<Badge variant="outline">
@@ -459,15 +518,25 @@ function RouteComponent() {
 															{importItem.files?.map((fileItem, idx) => (
 																<div
 																	key={idx}
-																	className="flex items-center space-x-2 text-sm text-gray-700"
+																	className="flex flex-wrap items-center gap-2 text-sm text-foreground"
 																>
 																	<Upload className="h-4 w-4 text-green-600" />
-																	<span>
+																	<span className="min-w-0 break-all">
 																		{typeof fileItem.file === "string"
 																			? fileItem.file
 																			: fileItem.file?.filename ||
 																				"Fichier inconnu"}
 																	</span>
+																	{typeof fileItem.file !== "string" &&
+																		(fileItem.file?.mimeType ===
+																			"application/pdf" ||
+																			fileItem.file?.filename
+																				?.toLowerCase()
+																				.endsWith(".pdf")) && (
+																			<Badge variant="secondary">
+																				PDF · En attente d'extraction
+																			</Badge>
+																		)}
 																</div>
 															))}
 														</div>
