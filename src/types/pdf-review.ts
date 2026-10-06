@@ -4,28 +4,17 @@ export type PdfMatch = {
 };
 export type PdfRow = {
 	client_name: string;
-	client_code: string;
-	usufruct_code: string;
 	advisor_name: string;
 	advisor_code: string;
 	product: string;
 	operation_date: string;
-	quantity: number | null;
-	gross_base: number | null;
-	commission_rate_pct: number | null;
 	commission_amount: number | null;
 	page: number;
 };
 export type PdfDocument = {
 	supplier_name: string;
 	document_reference: string;
-	issue_date: string;
-	period_month: string;
-	period_source: "document" | "filename" | "";
-	recipient_name: string;
-	recipient_partner_code: string;
 	commission_total: number | null;
-	currency: string;
 };
 export type PdfReviewLine = PdfRow & {
 	id: string;

@@ -669,7 +669,12 @@ function RouteComponent() {
 																				</Badge>
 																				{fileItem.id && (
 																					<Button
-																						variant="outline"
+																						variant={
+																							fileItem.pdfExtraction?.review
+																								?.status === "validated"
+																								? "outline"
+																								: "destructive"
+																						}
 																						size="sm"
 																						className="h-7"
 																						onClick={() =>

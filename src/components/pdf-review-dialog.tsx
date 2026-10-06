@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { cloneElement, type ReactElement, useId, useState } from "react";
 import { toast } from "sonner";
 import {
 	analyzePdfReview,
-	matchPdfReview,
 	pdfReviewOptionsQueryOptions,
 	pdfReviewQueryOptions,
 	savePdfReview,
@@ -125,10 +124,10 @@ export function PdfReviewDialog({
 								initialDocument={review.document}
 								options={options.data}
 								onDirty={setDirty}
-								onSaved={(validated) => {
+								onSaved={() => {
 									setDirty(false);
 									void query.refetch();
-									if (validated) onClose();
+									onClose();
 								}}
 							/>
 						) : (
@@ -172,7 +171,7 @@ function PdfReviewEditor({
 	initialDocument: PdfDocument;
 	options: PdfReviewOptions;
 	onDirty: (dirty: boolean) => void;
-	onSaved: (validated: boolean) => void;
+	onSaved: () => void;
 }) {
 	const client = useQueryClient();
 	const [document, setDocument] = useState<PdfDocument>(initialDocument);
@@ -197,20 +196,11 @@ function PdfReviewEditor({
 					? "Relevé enregistré et validé"
 					: "Brouillon enregistré",
 			);
-			onSaved(result.review.status === "validated");
+			onSaved();
 		},
 		onError: (error) => setError(error.message),
 	});
-	const match = useMutation({
-		mutationFn: () =>
-			matchPdfReview({ data: { ...target, input: input("draft") } }),
-		onSuccess: (result) => {
-			setLines(result.lines);
-			onDirty(true);
-		},
-		onError: (error) => setError(error.message),
-	});
-	const busy = save.isPending || match.isPending;
+	const busy = save.isPending;
 	const total =
 		lines.reduce(
 			(sum, line) => sum + Math.round((line.commission_amount ?? 0) * 100),
@@ -223,11 +213,7 @@ function PdfReviewEditor({
 		document.commission_total !== null &&
 		Math.round(total * 100) === Math.round(document.commission_total * 100);
 	const canValidate =
-		!!supplierId &&
-		lines.length > 0 &&
-		!incomplete &&
-		balanced &&
-		document.currency === "EUR";
+		!!supplierId && lines.length > 0 && !incomplete && balanced;
 	function editDocument(patch: Partial<PdfDocument>) {
 		setDocument((previous) => ({ ...previous, ...patch }));
 		onDirty(true);
@@ -266,9 +252,9 @@ function PdfReviewEditor({
 				)}
 				<fieldset disabled={busy} className="min-w-0 space-y-4">
 					<legend className="mb-3 text-sm font-semibold">
-						Fournisseur et relevé
+						Fournisseur et total
 					</legend>
-					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<div className="grid gap-3 sm:grid-cols-2">
 						<div className="min-w-0 space-y-1.5">
 							<p className="text-sm">Fournisseur</p>
 							<PdfEntitySelect
@@ -293,35 +279,6 @@ function PdfReviewEditor({
 								{review.extracted?.supplier_name || "Non identifié"}
 							</p>
 						</div>
-						<Field label="Référence du relevé">
-							<Input
-								value={document.document_reference}
-								onChange={(event) =>
-									editDocument({ document_reference: event.target.value })
-								}
-							/>
-						</Field>
-						<Field label="Date d’édition">
-							<Input
-								type="date"
-								value={document.issue_date}
-								onChange={(event) =>
-									editDocument({ issue_date: event.target.value })
-								}
-							/>
-						</Field>
-						<Field label="Période du relevé">
-							<Input
-								type="month"
-								value={document.period_month}
-								onChange={(event) =>
-									editDocument({
-										period_month: event.target.value,
-										period_source: "",
-									})
-								}
-							/>
-						</Field>
 						<Field label="Total commissions HT">
 							<Input
 								type="number"
@@ -334,35 +291,7 @@ function PdfReviewEditor({
 								}
 							/>
 						</Field>
-						<Field label="Devise">
-							<Input
-								value={document.currency}
-								maxLength={3}
-								placeholder="EUR"
-								onChange={(event) =>
-									editDocument({ currency: event.target.value.toUpperCase() })
-								}
-							/>
-						</Field>
 					</div>
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						disabled={!supplierId || !lines.length || busy}
-						onClick={() => match.mutate()}
-					>
-						{match.isPending ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
-						) : (
-							<Search className="h-4 w-4" />
-						)}
-						Rechercher les indépendants
-					</Button>
-					<p className="text-xs text-muted-foreground">
-						Code exact pour le fournisseur, puis nom ou cabinet. Une suggestion
-						approximative nécessite votre choix.
-					</p>
 				</fieldset>
 				<div className="space-y-3">
 					<div className="flex flex-wrap items-center justify-between gap-2">
@@ -382,22 +311,14 @@ function PdfReviewEditor({
 							className="min-w-0 space-y-3 rounded-lg border bg-muted/20 p-3 sm:p-4"
 						>
 							<legend className="px-1 text-sm font-medium">
-								Ligne {index + 1} · Page {line.page}
+								Ligne {index + 1}
 							</legend>
-							<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+							<div className="grid gap-3 sm:grid-cols-2">
 								<Field label="Client">
 									<Input
 										value={line.client_name}
 										onChange={(event) =>
 											editLine(line.id, { client_name: event.target.value })
-										}
-									/>
-								</Field>
-								<Field label="Produit">
-									<Input
-										value={line.product}
-										onChange={(event) =>
-											editLine(line.id, { product: event.target.value })
 										}
 									/>
 								</Field>
@@ -447,82 +368,7 @@ function PdfReviewEditor({
 										<option value="encours">Encours</option>
 									</select>
 								</Field>
-								<Field label="Date d’opération">
-									<Input
-										type="date"
-										value={line.operation_date}
-										onChange={(event) =>
-											editLine(line.id, { operation_date: event.target.value })
-										}
-									/>
-								</Field>
 							</div>
-							<details>
-								<summary className="cursor-pointer text-sm text-muted-foreground">
-									Codes et valeurs détaillées
-								</summary>
-								<div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-									{(
-										[
-											["client_code", "Code client"],
-											["usufruct_code", "Code usufruit"],
-											["advisor_code", "Code conseiller"],
-											["advisor_name", "Nom conseiller lu"],
-										] as const
-									).map(([key, label]) => (
-										<Field key={key} label={label}>
-											<Input
-												value={line[key]}
-												onChange={(event) =>
-													editLine(line.id, {
-														[key]: event.target.value,
-														...(key === "advisor_code" || key === "advisor_name"
-															? {
-																	appUserId: null,
-																	match: {
-																		kind: "unmatched" as const,
-																		candidates: [],
-																	},
-																}
-															: {}),
-													})
-												}
-											/>
-										</Field>
-									))}
-									{(
-										[
-											["quantity", "Quantité"],
-											["gross_base", "Base (€)"],
-											["commission_rate_pct", "Taux (%)"],
-										] as const
-									).map(([key, label]) => (
-										<Field key={key} label={label}>
-											<Input
-												type="number"
-												step="any"
-												value={line[key] ?? ""}
-												onChange={(event) =>
-													editLine(line.id, {
-														[key]: numberValue(event.target.value),
-													})
-												}
-											/>
-										</Field>
-									))}
-									<Field label="Page source">
-										<Input
-											type="number"
-											min={1}
-											max={100}
-											value={line.page}
-											onChange={(event) =>
-												editLine(line.id, { page: Number(event.target.value) })
-											}
-										/>
-									</Field>
-								</div>
-							</details>
 							<Button
 								variant="ghost"
 								size="sm"
@@ -549,15 +395,10 @@ function PdfReviewEditor({
 								{
 									id: crypto.randomUUID(),
 									client_name: "",
-									client_code: "",
-									usufruct_code: "",
 									advisor_name: "",
 									advisor_code: "",
 									product: "",
 									operation_date: "",
-									quantity: null,
-									gross_base: null,
-									commission_rate_pct: null,
 									commission_amount: null,
 									page: 1,
 									appUserId: null,
