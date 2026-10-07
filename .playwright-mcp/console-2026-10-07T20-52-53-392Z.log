@@ -1,0 +1,26 @@
+[ 2551544ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3333/node_modules/.vite/deps/react-dom_client.js?v=c1bcb54b:14337
+[ 2689477ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3333/node_modules/.vite/deps/react-dom_client.js?v=c1bcb54b:14337
+[ 2721281ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ http://localhost:3333/_serverFn/eyJmaWxlIjoiL0BpZC9zcmMvYXBpL3F1ZXJpZXMvY29tbWlzc2lvbi1xdWVyaWVzLnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImNyZWF0ZUNvbW1pc3Npb25JbXBvcnRRdWVyeV9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0:0
+[ 2721281ms] [LOG] TypeError: Failed to fetch
+    at http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:39
+    at getResponse (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:87:20)
+    at serverFnFetcher (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:15)
+    at async client (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:185:17)
+    at async callNextMiddleware (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:116:20) @ http://localhost:3333/src/routes/__root.tsx:65
+[ 2721551ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ http://localhost:3333/_serverFn/eyJmaWxlIjoiL0BpZC9zcmMvYXBpL3F1ZXJpZXMvY29tbWlzc2lvbi1xdWVyaWVzLnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImNyZWF0ZUNvbW1pc3Npb25JbXBvcnRRdWVyeV9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0:0
+[ 2721551ms] [LOG] TypeError: Failed to fetch
+    at http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:39
+    at getResponse (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:87:20)
+    at serverFnFetcher (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:15)
+    at async client (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:185:17)
+    at async callNextMiddleware (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:116:20) @ http://localhost:3333/src/routes/__root.tsx:65
+[ 2780610ms] [ERROR] Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector @ http://localhost:3333/_serverFn/eyJmaWxlIjoiL0BpZC9zcmMvYXBpL3F1ZXJpZXMvY29tbWlzc2lvbi1xdWVyaWVzLnRzP3Rzcy1zZXJ2ZXJmbi1zcGxpdCIsImV4cG9ydCI6ImNyZWF0ZUNvbW1pc3Npb25JbXBvcnRRdWVyeV9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0:0
+[ 2780610ms] [LOG] TypeError: Failed to fetch
+    at http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:39
+    at getResponse (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:87:20)
+    at serverFnFetcher (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/client-rpc/serverFnFetcher.js?v=c1bcb54b:40:15)
+    at async client (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:185:17)
+    at async callNextMiddleware (http://localhost:3333/node_modules/.pnpm/@tanstack+start-client-core@1.167.9/node_modules/@tanstack/start-client-core/dist/esm/createServerFn.js?v=c1bcb54b:116:20) @ http://localhost:3333/src/routes/__root.tsx:65
+[ 2787412ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:3333/src/routes/__root.tsx:65
+[ 2787416ms] [ERROR] Failed to load resource: net::ERR_INCOMPLETE_CHUNKED_ENCODING @ http://localhost:3333/__tsd/console-pipe/sse:0
+[ 2787516ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3333/__tsd/console-pipe:0

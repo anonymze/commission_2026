@@ -76,6 +76,7 @@ export interface CommissionImport {
     id?: string | null;
   }[];
   entry: "production" | "encours" | "production_encours";
+  category?: "ias" | "cif" | null;
   updatedAt: string;
   createdAt: string;
 }

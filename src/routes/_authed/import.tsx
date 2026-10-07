@@ -62,6 +62,7 @@ const allowedExtensions = [".csv", ".xls", ".xlsx", ".ods"];
 const PDF_MODE = "pdf-unassigned";
 
 type EntryType = CommissionImport["entry"];
+type ImportCategory = NonNullable<CommissionImport["category"]>;
 
 // Query options for SSR
 const commissionsImportQueryOptions = () =>
@@ -106,6 +107,8 @@ function RouteComponent() {
 
 	const [selectedSupplier, setSelectedSupplier] = useState<string | null>(null);
 	const [selectedEntry, setSelectedEntry] = useState<EntryType | null>(null);
+	const [selectedCategory, setSelectedCategory] =
+		useState<ImportCategory | null>(null);
 	const [supplierOpen, setSupplierOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isDragging, setIsDragging] = useState(false);
@@ -130,10 +133,12 @@ function RouteComponent() {
 			files,
 			supplier,
 			entry,
+			category,
 		}: {
 			files: File[];
 			supplier: string;
 			entry: EntryType;
+			category: ImportCategory;
 		}) => {
 			const pdf = supplier === PDF_MODE;
 			const result = {
@@ -153,6 +158,7 @@ function RouteComponent() {
 				const data = new FormData();
 				data.set(pdf ? "mode" : "supplier", pdf ? "pdf" : supplier);
 				data.set("entry", entry);
+				data.set("category", category);
 				for (const file of batch) data.append("files", file);
 				try {
 					const uploaded = await createCommissionImportQuery({ data });
@@ -275,8 +281,16 @@ function RouteComponent() {
 	const handleFileUpload = (files: FileList | null) => {
 		if (createImportMutation.isPending || deleteImportMutation.isPending)
 			return;
-		if (!selectedSupplier || !selectedEntry || !files || files.length === 0) {
-			toast.error("Veuillez sélectionner un fournisseur et un type d'entrée");
+		if (
+			!selectedSupplier ||
+			!selectedEntry ||
+			!selectedCategory ||
+			!files ||
+			files.length === 0
+		) {
+			toast.error(
+				"Veuillez choisir un import, un type d'entrée et une catégorie IAS ou CIF",
+			);
 			return;
 		}
 
@@ -300,13 +314,19 @@ function RouteComponent() {
 			files: fileArray,
 			supplier: selectedSupplier,
 			entry: selectedEntry,
+			category: selectedCategory,
 		});
 	};
 
 	const handleSelectSupplier = (supplierId: string) => {
 		setSelectedSupplier(supplierId);
 		setSelectedEntry(null);
+		setSelectedCategory(null);
 		setSupplierOpen(false);
+	};
+	const handleSelectEntry = (entry: EntryType) => {
+		setSelectedEntry(entry);
+		setSelectedCategory(null);
 	};
 
 	const handleDeleteImport = (importId: string) => {
@@ -441,7 +461,7 @@ function RouteComponent() {
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 							<Button
 								variant={selectedEntry === "production" ? "default" : "outline"}
-								onClick={() => setSelectedEntry("production")}
+								onClick={() => handleSelectEntry("production")}
 								disabled={isOperating}
 								className="h-auto py-3 flex flex-col items-center gap-1"
 							>
@@ -449,7 +469,7 @@ function RouteComponent() {
 							</Button>
 							<Button
 								variant={selectedEntry === "encours" ? "default" : "outline"}
-								onClick={() => setSelectedEntry("encours")}
+								onClick={() => handleSelectEntry("encours")}
 								disabled={isOperating}
 								className="h-auto py-3 flex flex-col items-center gap-1"
 							>
@@ -459,7 +479,7 @@ function RouteComponent() {
 								variant={
 									selectedEntry === "production_encours" ? "default" : "outline"
 								}
-								onClick={() => setSelectedEntry("production_encours")}
+								onClick={() => handleSelectEntry("production_encours")}
 								disabled={isOperating}
 								className="h-auto py-3 flex flex-col items-center gap-1"
 							>
@@ -469,10 +489,39 @@ function RouteComponent() {
 					</div>
 				)}
 
-				{/* Step 3: File Upload */}
 				{selectedSupplier && selectedEntry && (
+					<fieldset disabled={isOperating} className="min-w-0">
+						<legend className="mb-2.5 text-sm font-medium">
+							3. Choisir la catégorie{" "}
+							<span
+								aria-hidden="true"
+								className="text-red-600 dark:text-red-400"
+							>
+								*
+							</span>
+						</legend>
+						<div className="grid grid-cols-2 gap-3">
+							{(["ias", "cif"] as const).map((category) => (
+								<Button
+									key={category}
+									variant={
+										selectedCategory === category ? "default" : "outline"
+									}
+									aria-pressed={selectedCategory === category}
+									onClick={() => setSelectedCategory(category)}
+									className="h-auto py-3"
+								>
+									{category.toUpperCase()}
+								</Button>
+							))}
+						</div>
+					</fieldset>
+				)}
+
+				{/* Step 4: File Upload */}
+				{selectedSupplier && selectedEntry && selectedCategory && (
 					<div className="space-y-2.5">
-						<Label>3. Importer le(s) fichier(s)</Label>
+						<Label>4. Importer le(s) fichier(s)</Label>
 						<fieldset
 							aria-label="Importer des fichiers"
 							onDragOver={(event) => {
@@ -551,6 +600,8 @@ function RouteComponent() {
 										? "Production + Encours"
 										: selectedEntry.charAt(0).toUpperCase() +
 											selectedEntry.slice(1)}
+									{" · "}
+									{selectedCategory.toUpperCase()}
 								</Badge>
 							</label>
 						</fieldset>
@@ -601,12 +652,19 @@ function RouteComponent() {
 														className="p-3 bg-card rounded border border-border space-y-2"
 													>
 														<div className="flex items-center justify-between">
-															<Badge variant="outline">
-																{importItem.entry === "production_encours"
-																	? "Production + Encours"
-																	: importItem.entry.charAt(0).toUpperCase() +
-																		importItem.entry.slice(1)}
-															</Badge>
+															<div className="flex flex-wrap items-center gap-2">
+																<Badge variant="outline">
+																	{importItem.entry === "production_encours"
+																		? "Production + Encours"
+																		: importItem.entry.charAt(0).toUpperCase() +
+																			importItem.entry.slice(1)}
+																</Badge>
+																{importItem.category && (
+																	<Badge variant="secondary">
+																		{importItem.category.toUpperCase()}
+																	</Badge>
+																)}
+															</div>
 															<Button
 																variant="ghost"
 																size="sm"

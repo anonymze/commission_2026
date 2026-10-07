@@ -31,15 +31,8 @@ APPLICATION COMMISSIONS
 
 le pdf doit pouvoir assigner encours ou production automatiquement car c'est le même que excel
 metter en couleur les champs qui sotn aps remplis dans le popup de verification, le * ets important mais j'ia besoind evoir visuellement rapdiement ce que je dois remplir rapidement
-la crobeille rouge est mal situé en haut à droite, regarde ça déborde du cadre
-ecart - 0,002 ca correspond à quoi ?? ca bloque
-
-Les lignes grisées en gras sont des sous-totaux par contrat et ont été exclues.
-L'identité et le code conseiller proviennent des en-têtes de section rattachant les lignes à GROUPE VALOREM - MATHIEU LE DUC, et non du numéro apporteur global.
-Les produits U2 et U7 ne sont pas développés dans le document. ces textes servent à quoi ??
 
 
-on doit arrondir à deux chiffres après la virgule
 
 
 suivi annuel sur l'année avec les catégories

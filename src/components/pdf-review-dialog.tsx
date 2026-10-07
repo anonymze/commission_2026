@@ -33,7 +33,13 @@ const money = (amount: number) =>
 	new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
 		amount,
 	);
-const numberValue = (value: string) => (value === "" ? null : Number(value));
+const amountFormat = new Intl.NumberFormat("en-US", {
+	useGrouping: false,
+	minimumFractionDigits: 2,
+	maximumFractionDigits: 2,
+});
+const roundAmount = (value: number | null) =>
+	value === null ? null : Number(amountFormat.format(value)) || 0;
 
 export function PdfReviewDialog({
 	target,
@@ -174,9 +180,17 @@ function PdfReviewEditor({
 	onSaved: () => void;
 }) {
 	const client = useQueryClient();
-	const [document, setDocument] = useState<PdfDocument>(initialDocument);
+	const [document, setDocument] = useState<PdfDocument>(() => ({
+		...initialDocument,
+		commission_total: roundAmount(initialDocument.commission_total),
+	}));
 	const [supplierId, setSupplierId] = useState(review.supplierId);
-	const [lines, setLines] = useState(review.lines);
+	const [lines, setLines] = useState(() =>
+		review.lines.map((line) => ({
+			...line,
+			commission_amount: roundAmount(line.commission_amount),
+		})),
+	);
 	const [error, setError] = useState("");
 	const input = (action: PdfReviewInput["action"]): PdfReviewInput => ({
 		revision: review.revision,
@@ -275,14 +289,10 @@ function PdfReviewEditor({
 							</p>
 						</div>
 						<Field label="Total commissions HT" required>
-							<Input
-								type="number"
-								step="0.01"
-								value={document.commission_total ?? ""}
-								onChange={(event) =>
-									editDocument({
-										commission_total: numberValue(event.target.value),
-									})
+							<PdfAmountInput
+								value={document.commission_total}
+								onChange={(commission_total) =>
+									editDocument({ commission_total })
 								}
 							/>
 						</Field>
@@ -313,7 +323,7 @@ function PdfReviewEditor({
 									size="icon-sm"
 									aria-label={`Retirer la ligne ${index + 1}`}
 									title="Retirer cette ligne"
-									className="absolute right-2 top-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+									className="absolute right-2 top-4 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
 									onClick={() => {
 										setLines((previous) =>
 											previous.filter((item) => item.id !== line.id),
@@ -333,14 +343,10 @@ function PdfReviewEditor({
 										/>
 									</Field>
 									<Field label="Commission HT (€)" required>
-										<Input
-											type="number"
-											step="0.01"
-											value={line.commission_amount ?? ""}
-											onChange={(event) =>
-												editLine(line.id, {
-													commission_amount: numberValue(event.target.value),
-												})
+										<PdfAmountInput
+											value={line.commission_amount}
+											onChange={(commission_amount) =>
+												editLine(line.id, { commission_amount })
 											}
 										/>
 									</Field>
@@ -472,6 +478,34 @@ function PdfReviewEditor({
 				</div>
 			</div>
 		</>
+	);
+}
+
+function PdfAmountInput({
+	value,
+	onChange,
+	...props
+}: {
+	id?: string;
+	"aria-required"?: boolean;
+	value: number | null;
+	onChange: (value: number | null) => void;
+}) {
+	const [draft, setDraft] = useState<string | null>(null);
+	return (
+		<Input
+			{...props}
+			type="number"
+			step="0.01"
+			value={draft ?? (value === null ? "" : amountFormat.format(value))}
+			onFocus={(event) => setDraft(event.target.value)}
+			onChange={(event) => {
+				const entered = event.target.value;
+				setDraft(entered);
+				onChange(roundAmount(entered === "" ? null : Number(entered)));
+			}}
+			onBlur={() => setDraft(null)}
+		/>
 	);
 }
 
