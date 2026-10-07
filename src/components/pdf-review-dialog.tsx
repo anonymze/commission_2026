@@ -271,6 +271,7 @@ function PdfReviewEditor({
 								value={supplierId}
 								options={options.suppliers}
 								match={review.supplierMatch}
+								error={!supplierId ? "Choisissez un fournisseur." : undefined}
 								onChange={(id) => {
 									setSupplierId(id);
 									setLines((previous) =>
@@ -288,7 +289,15 @@ function PdfReviewEditor({
 								{review.extracted?.supplier_name || "Non identifié"}
 							</p>
 						</div>
-						<Field label="Total commissions HT" required>
+						<Field
+							label="Total commissions HT"
+							required
+							error={
+								document.commission_total === null
+									? "Renseignez le total des commissions."
+									: undefined
+							}
+						>
 							<PdfAmountInput
 								value={document.commission_total}
 								onChange={(commission_total) =>
@@ -342,7 +351,15 @@ function PdfReviewEditor({
 											}
 										/>
 									</Field>
-									<Field label="Commission HT (€)" required>
+									<Field
+										label="Commission HT (€)"
+										required
+										error={
+											line.commission_amount === null
+												? "Renseignez le montant de la commission."
+												: undefined
+										}
+									>
 										<PdfAmountInput
 											value={line.commission_amount}
 											onChange={(commission_amount) =>
@@ -360,6 +377,11 @@ function PdfReviewEditor({
 											value={line.appUserId}
 											options={options.users}
 											match={line.match}
+											error={
+												!line.appUserId
+													? "Choisissez un indépendant."
+													: undefined
+											}
 											disabled={busy}
 											onChange={(id) => editLine(line.id, { appUserId: id })}
 										/>
@@ -368,9 +390,17 @@ function PdfReviewEditor({
 											{line.advisor_code ? ` · Code ${line.advisor_code}` : ""}
 										</p>
 									</div>
-									<Field label="Type de commission" required>
+									<Field
+										label="Type de commission"
+										required
+										error={
+											!line.entry
+												? "Choisissez production ou encours."
+												: undefined
+										}
+									>
 										<select
-											className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+											className="h-9 w-full rounded-md border bg-background px-3 text-sm aria-invalid:border-red-600 aria-invalid:bg-red-50 dark:aria-invalid:border-red-400 dark:aria-invalid:bg-red-950/30"
 											value={line.entry || ""}
 											onChange={(event) =>
 												editLine(line.id, {
@@ -488,6 +518,8 @@ function PdfAmountInput({
 }: {
 	id?: string;
 	"aria-required"?: boolean;
+	"aria-invalid"?: boolean;
+	"aria-describedby"?: string;
 	value: number | null;
 	onChange: (value: number | null) => void;
 }) {
@@ -497,6 +529,7 @@ function PdfAmountInput({
 			{...props}
 			type="number"
 			step="0.01"
+			className="aria-invalid:border-red-600 aria-invalid:bg-red-50 dark:aria-invalid:border-red-400 dark:aria-invalid:bg-red-950/30"
 			value={draft ?? (value === null ? "" : amountFormat.format(value))}
 			onFocus={(event) => setDraft(event.target.value)}
 			onChange={(event) => {
@@ -513,15 +546,23 @@ function Field({
 	label,
 	children,
 	required,
+	error,
 }: {
 	label: string;
-	children: ReactElement<{ id?: string; "aria-required"?: boolean }>;
+	children: ReactElement<{
+		id?: string;
+		"aria-required"?: boolean;
+		"aria-invalid"?: boolean;
+		"aria-describedby"?: string;
+	}>;
 	required?: boolean;
+	error?: string;
 }) {
 	const id = useId();
+	const errorId = `${id}-error`;
 	return (
-		<label htmlFor={id} className="flex min-w-0 flex-col gap-1.5 text-sm">
-			<span>
+		<div className="flex min-w-0 flex-col gap-1.5 text-sm">
+			<label htmlFor={id}>
 				{label}
 				{required && (
 					<>
@@ -529,9 +570,19 @@ function Field({
 						<RequiredMark />
 					</>
 				)}
-			</span>
-			{cloneElement(children, { id, "aria-required": required })}
-		</label>
+			</label>
+			{cloneElement(children, {
+				id,
+				"aria-required": required,
+				"aria-invalid": !!error,
+				"aria-describedby": error ? errorId : undefined,
+			})}
+			{error && (
+				<p id={errorId} className="text-xs text-red-600 dark:text-red-400">
+					{error}
+				</p>
+			)}
+		</div>
 	);
 }
 

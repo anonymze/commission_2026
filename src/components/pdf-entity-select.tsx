@@ -1,5 +1,5 @@
 import { Check, ChevronsUpDown } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
@@ -23,6 +23,7 @@ export function PdfEntitySelect({
 	match,
 	disabled,
 	required,
+	error,
 	onChange,
 }: {
 	label: string;
@@ -31,9 +32,11 @@ export function PdfEntitySelect({
 	match?: PdfMatch;
 	disabled?: boolean;
 	required?: boolean;
+	error?: string;
 	onChange: (id: string | null) => void;
 }) {
 	const [open, setOpen] = useState(false);
+	const descriptionId = useId();
 	const candidates = match?.candidates || [];
 	const candidateIds = new Set(candidates.map((candidate) => candidate.id));
 	const selected = options.find((option) => option.id === value);
@@ -47,8 +50,10 @@ export function PdfEntitySelect({
 						aria-label={label}
 						aria-expanded={open}
 						aria-required={required}
+						aria-invalid={!!error}
+						aria-describedby={error || !value ? descriptionId : undefined}
 						disabled={disabled}
-						className="w-full justify-between font-normal"
+						className="w-full justify-between font-normal aria-invalid:border-red-600 aria-invalid:bg-red-50 dark:aria-invalid:border-red-400 dark:aria-invalid:bg-red-950/30"
 					>
 						<span className="truncate">{selected?.label || "Choisir…"}</span>
 						<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -119,13 +124,17 @@ export function PdfEntitySelect({
 					</Command>
 				</PopoverContent>
 			</Popover>
-			{!value && (
-				<p className="text-xs text-muted-foreground">
-					{match?.kind === "ambiguous"
-						? "Plusieurs correspondances : choisissez la bonne."
-						: candidates.length
-							? "Suggestion à vérifier et à sélectionner."
-							: "Aucune correspondance sélectionnée."}
+			{(error || !value) && (
+				<p
+					id={descriptionId}
+					className={`text-xs ${error ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
+				>
+					{error ||
+						(match?.kind === "ambiguous"
+							? "Plusieurs correspondances : choisissez la bonne."
+							: candidates.length
+								? "Suggestion à vérifier et à sélectionner."
+								: "Aucune correspondance sélectionnée.")}
 				</p>
 			)}
 		</div>
