@@ -213,7 +213,10 @@ function PdfReviewEditor({
 		document.commission_total !== null &&
 		Math.round(total * 100) === Math.round(document.commission_total * 100);
 	const canValidate =
-		!!supplierId && lines.length > 0 && !incomplete && balanced;
+		!!supplierId &&
+		lines.length > 0 &&
+		!incomplete &&
+		document.commission_total !== null;
 	function editDocument(patch: Partial<PdfDocument>) {
 		setDocument((previous) => ({ ...previous, ...patch }));
 		onDirty(true);
@@ -239,17 +242,6 @@ function PdfReviewEditor({
 						Vérifiez les données proposées avant de les enregistrer.
 					</p>
 				</div>
-				{!!review.extracted?.warnings.length && (
-					<Alert>
-						<AlertDescription>
-							<ul className="list-inside list-disc">
-								{[...new Set(review.extracted.warnings)].map((warning) => (
-									<li key={warning}>{warning}</li>
-								))}
-							</ul>
-						</AlertDescription>
-					</Alert>
-				)}
 				<fieldset disabled={busy} className="min-w-0 space-y-4">
 					<legend className="mb-3 text-sm font-semibold">
 						Fournisseur et total
@@ -427,16 +419,24 @@ function PdfReviewEditor({
 					<span>
 						Somme des lignes : <strong>{money(total)}</strong>
 					</span>
-					<span
-						className={balanced ? "text-muted-foreground" : "text-destructive"}
-					>
-						{document.commission_total === null
-							? "Total du relevé à renseigner"
-							: balanced
-								? "Total concordant"
-								: `Écart : ${money(total - document.commission_total)}`}
+					<span className="text-muted-foreground">
+						Total du relevé :{" "}
+						<strong>
+							{document.commission_total === null
+								? "à renseigner"
+								: money(document.commission_total)}
+						</strong>
 					</span>
 				</div>
+				{document.commission_total !== null && !balanced && (
+					<p
+						role="status"
+						className="text-sm text-amber-700 dark:text-amber-400"
+					>
+						Écart de {money(total - document.commission_total)} par rapport au
+						total du relevé. Vous pouvez enregistrer et valider.
+					</p>
+				)}
 				{error && (
 					<p role="alert" className="text-sm text-destructive">
 						{error}
@@ -445,7 +445,7 @@ function PdfReviewEditor({
 				{!canValidate && (
 					<p className="text-xs text-muted-foreground">
 						La validation nécessite un fournisseur, un indépendant et un type
-						par ligne, des montants renseignés et un total concordant en EUR.
+						par ligne, les montants des commissions et le total du relevé.
 					</p>
 				)}
 				<div className="flex flex-wrap justify-end gap-2">

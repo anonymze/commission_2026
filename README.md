@@ -21,6 +21,29 @@ formation déclarationd des revenus 9 avril 2026
 5. Quelle date détermine le mois de commission ? Période du relevé,
     date de facture ou date de paiement ?
 
-retrocession dans l'excel (comment l'afficher), remettre le blocage si pas config
-api + ia pour récupérer les fichiers chez le fournisseur (mail à envoyer pour expliquer ce qu'on veut)
-les pdfs à traiter (ia ou js)
+APPLCIATION MOBILE
+
+fiches produits -> fiche produit club deal ->  pourvoir ajouter un nom et remonte dans l'onglet
+
+reunion bonne pratique, d'agence dans les réunions, générer un liena automatique la veille piur ce qui ont accepté, le fournisseur doit recevoir (lintervenant), envoyé lien d'invitiation teams aux créateurs
+
+APPLICATION COMMISSIONS
+
+le pdf doit pouvoir assigner encours ou production automatiquement car c'est le même que excel
+metter en couleur les champs qui sotn aps remplis dans le popup de verification, le * ets important mais j'ia besoind evoir visuellement rapdiement ce que je dois remplir rapidement
+la crobeille rouge est mal situé en haut à droite, regarde ça déborde du cadre
+ecart - 0,002 ca correspond à quoi ?? ca bloque
+
+Les lignes grisées en gras sont des sous-totaux par contrat et ont été exclues.
+L'identité et le code conseiller proviennent des en-têtes de section rattachant les lignes à GROUPE VALOREM - MATHIEU LE DUC, et non du numéro apporteur global.
+Les produits U2 et U7 ne sont pas développés dans le document. ces textes servent à quoi ??
+
+
+on doit arrondir à deux chiffres après la virgule
+
+
+suivi annuel sur l'année avec les catégories
+
+ligne IAS ou CIF  , et à ajotuer dans le excel dans le rapport annuel et dans le resume
+
+fair eun vrai espace perso, avec le sdocuments remplis depuis le dashboard pour les indé, suis era itulisé sur l'app mobile et sur l'outil commission
