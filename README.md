@@ -29,14 +29,5 @@ reunion bonne pratique, d'agence dans les réunions, générer un liena automati
 
 APPLICATION COMMISSIONS
 
-le pdf doit pouvoir assigner encours ou production automatiquement car c'est le même que excel
-metter en couleur les champs qui sotn aps remplis dans le popup de verification, le * ets important mais j'ia besoind evoir visuellement rapdiement ce que je dois remplir rapidement
-
-
-
-
-suivi annuel sur l'année avec les catégories
-
-ligne IAS ou CIF  , et à ajotuer dans le excel dans le rapport annuel et dans le resume
 
 fair eun vrai espace perso, avec le sdocuments remplis depuis le dashboard pour les indé, suis era itulisé sur l'app mobile et sur l'outil commission

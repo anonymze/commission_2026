@@ -4,6 +4,7 @@ import { cloneElement, type ReactElement, useId, useState } from "react";
 import { toast } from "sonner";
 import {
 	analyzePdfReview,
+	matchPdfReview,
 	pdfReviewOptionsQueryOptions,
 	pdfReviewQueryOptions,
 	savePdfReview,
@@ -127,6 +128,7 @@ export function PdfReviewDialog({
 								key={review.revision}
 								target={target}
 								review={review}
+								importEntry={query.data.entry}
 								initialDocument={review.document}
 								options={options.data}
 								onDirty={setDirty}
@@ -168,12 +170,14 @@ function PdfReviewEditor({
 	initialDocument,
 	target,
 	review,
+	importEntry,
 	options,
 	onDirty,
 	onSaved,
 }: {
 	target: PdfTarget;
 	review: PdfReview;
+	importEntry: string;
 	initialDocument: PdfDocument;
 	options: PdfReviewOptions;
 	onDirty: (dirty: boolean) => void;
@@ -214,7 +218,16 @@ function PdfReviewEditor({
 		},
 		onError: (error) => setError(error.message),
 	});
-	const busy = save.isPending;
+	const match = useMutation({
+		mutationFn: (input: PdfReviewInput) =>
+			matchPdfReview({ data: { ...target, input } }),
+		onSuccess: (result) => setLines(result.lines),
+		onError: () =>
+			setError(
+				"Correspondances automatiques indisponibles. Complétez les lignes manuellement.",
+			),
+	});
+	const busy = save.isPending || match.isPending;
 	const total =
 		lines.reduce(
 			(sum, line) => sum + Math.round((line.commission_amount ?? 0) * 100),
@@ -243,6 +256,26 @@ function PdfReviewEditor({
 		onDirty(true);
 		setError("");
 	}
+	function changeSupplier(id: string | null) {
+		if (id === supplierId) return;
+		const nextLines: PdfReviewLine[] = lines.map((line) => ({
+			...line,
+			appUserId: null,
+			entry: importEntry === "production_encours" ? null : line.entry,
+			match: { kind: "unmatched", candidates: [] },
+		}));
+		setSupplierId(id);
+		setLines(nextLines);
+		setError("");
+		onDirty(true);
+		if (id && nextLines.length) {
+			match.mutate({
+				...input("draft"),
+				supplierId: id,
+				lines: nextLines.map(({ match: _match, ...line }) => line),
+			});
+		}
+	}
 	return (
 		<>
 			<div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
@@ -269,25 +302,21 @@ function PdfReviewEditor({
 								label="Fournisseur"
 								required
 								value={supplierId}
+								disabled={busy}
 								options={options.suppliers}
 								match={review.supplierMatch}
 								error={!supplierId ? "Choisissez un fournisseur." : undefined}
-								onChange={(id) => {
-									setSupplierId(id);
-									setLines((previous) =>
-										previous.map((line) => ({
-											...line,
-											appUserId: null,
-											match: { kind: "unmatched", candidates: [] },
-										})),
-									);
-									onDirty(true);
-								}}
+								onChange={changeSupplier}
 							/>
 							<p className="text-xs text-muted-foreground">
 								Lu dans le PDF :{" "}
 								{review.extracted?.supplier_name || "Non identifié"}
 							</p>
+							{match.isPending && (
+								<p role="status" className="text-xs text-muted-foreground">
+									Recherche des indépendants et des types de commission...
+								</p>
+							)}
 						</div>
 						<Field
 							label="Total commissions HT"

@@ -9,6 +9,7 @@ export type PdfRow = {
 	product: string;
 	operation_date: string;
 	commission_amount: number | null;
+	commission_labels?: string[];
 	page: number;
 };
 export type PdfDocument = {
