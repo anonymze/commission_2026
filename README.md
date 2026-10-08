@@ -23,7 +23,7 @@ formation déclarationd des revenus 9 avril 2026
 
 APPLCIATION MOBILE
 
-reunion bonne pratique, d'agence dans les réunions, générer un liena automatique la veille piur ce qui ont accepté, le fournisseur doit recevoir (lintervenant), envoyé lien d'invitiation teams aux créateurs
+
 
 APPLICATION COMMISSIONS
 
