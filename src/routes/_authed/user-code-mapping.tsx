@@ -5,16 +5,16 @@ import {
 	CodeIcon,
 	Loader2,
 	Plus,
+	RefreshCw,
 	Save,
 	Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { appUsersQueryOptions } from "@/api/queries/app-user-queries";
 import {
 	appUserCommissionsCodeQueryOptions,
 	createAppUserCommissionCodeQuery,
-	deleteAppUserCommissionCodeQuery,
 } from "@/api/queries/commission-queries";
 import { suppliersQueryOptions } from "@/api/queries/supplier-queries";
 import { AssociateBadge } from "@/components/associate-badge";
@@ -63,61 +63,48 @@ function UsersCodeTab() {
 	const [userCodeEntries, setUserCodeEntries] = useState<
 		Record<
 			string,
-			Array<{ id: string; code: string; supplier: string; supplierName?: string }>
+			Array<{
+				id: string;
+				code: string;
+				supplier: string;
+				supplierName?: string;
+			}>
 		>
 	>({});
 	const [userAssociationIds, setUserAssociationIds] = useState<
 		Record<string, string>
 	>({});
+	const dirtyUsers = useRef(new Set<string>());
+	const [userCodeVersions, setUserCodeVersions] = useState<
+		Record<string, string | null>
+	>({});
+	const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
 
 	const createUserCodeMutation = useMutation({
 		mutationFn: createAppUserCommissionCodeQuery,
-		onSuccess: () => {
+		onSuccess: (result, variables) => {
+			const userId = variables.data.app_user;
+			dirtyUsers.current.delete(userId);
+			setSaveErrors((previous) => ({ ...previous, [userId]: "" }));
+			setUserCodeVersions((previous) => ({
+				...previous,
+				[userId]: result.mapping?.updatedAt ?? null,
+			}));
 			queryClient.invalidateQueries({
 				queryKey: ["app-user-commissions-code"],
 			});
-			toast.success("Code utilisateur créé avec succès");
+			toast.success("Sous-codes enregistrés");
 		},
-		onError: () => {
-			toast.error(
-				"Erreur lors de la création des codes. Attention à ne pas mettre plusieurs fois le même code.",
-			);
-		},
-	});
-
-	const deleteUserCodeMutation = useMutation({
-		mutationFn: deleteAppUserCommissionCodeQuery,
-		onSuccess: (_, variables) => {
-			queryClient.invalidateQueries({
-				queryKey: ["app-user-commissions-code"],
-			});
-
-			// Remove the user from local state after successful deletion
-			const deletedAssociationId = variables.data;
-			const userIdToRemove = Object.keys(userAssociationIds).find(
-				(uid) => userAssociationIds[uid] === deletedAssociationId,
-			);
-
-			if (userIdToRemove) {
-				setUserCodeEntries((prev) => {
-					const { [userIdToRemove]: removed, ...rest } = prev;
-					return rest;
-				});
-				setUserAssociationIds((prev) => {
-					const { [userIdToRemove]: removed, ...rest } = prev;
-					return rest;
-				});
-			}
-
-			toast.success("Association supprimée avec succès");
-		},
-		onError: () => {
-			toast.error("Erreur lors de la suppression de l'association");
+		onError: (error, variables) => {
+			setSaveErrors((previous) => ({
+				...previous,
+				[variables.data.app_user]: error.message,
+			}));
+			toast.error(error.message);
 		},
 	});
 
-	const isOperating =
-		createUserCodeMutation.isPending || deleteUserCodeMutation.isPending;
+	const isOperating = createUserCodeMutation.isPending;
 
 	const { data: users } = useSuspenseQuery(appUsersQueryOptions());
 	const { data: suppliers } = useSuspenseQuery(suppliersQueryOptions());
@@ -129,34 +116,70 @@ function UsersCodeTab() {
 	const allSuppliers = suppliers?.docs || [];
 	const existingCodeUsers = codeUsers?.docs || [];
 
-	// Populate code entries from existing data
-	useMemo(() => {
-		if (existingCodeUsers.length > 0) {
-			const existingData: Record<
-				string,
-				Array<{ id: string; code: string; supplier: string }>
-			> = {};
-			const associationIds: Record<string, string> = {};
-
-			existingCodeUsers.forEach((codeUser) => {
-				if (codeUser.app_user?.id && codeUser.code.length > 0) {
-					const userId = codeUser.app_user.id;
-					associationIds[userId] = codeUser.id; // Store association ID
-					existingData[userId] = codeUser.code.map((codeItem, index) => ({
-						id: `${userId}-${index}`,
-						code: codeItem.code,
-						supplier: codeItem.supplier?.id || "",
-						supplierName: codeItem.supplier?.name || "",
-					}));
-				}
-			});
-
-			setUserCodeEntries(existingData);
-			setUserAssociationIds(associationIds);
+	useEffect(() => {
+		const existingData: typeof userCodeEntries = {};
+		const associationIds: Record<string, string> = {};
+		const versions: Record<string, string | null> = {};
+		for (const mapping of existingCodeUsers) {
+			if (!mapping.app_user?.id) continue;
+			const userId = mapping.app_user.id;
+			associationIds[userId] = mapping.id;
+			versions[userId] = mapping.updatedAt;
+			existingData[userId] = mapping.code.map((entry) => ({
+				id: entry.id || crypto.randomUUID(),
+				code: entry.code,
+				supplier: entry.supplier?.id || "",
+				supplierName: entry.supplier?.name || "",
+			}));
 		}
+		setUserCodeEntries((previous) => {
+			for (const userId of dirtyUsers.current) {
+				if (previous[userId]) existingData[userId] = previous[userId];
+			}
+			return existingData;
+		});
+		setUserAssociationIds((previous) => {
+			for (const userId of dirtyUsers.current) {
+				if (previous[userId]) associationIds[userId] = previous[userId];
+			}
+			return associationIds;
+		});
+		setUserCodeVersions((previous) => {
+			for (const userId of dirtyUsers.current)
+				versions[userId] = previous[userId] ?? null;
+			return versions;
+		});
 	}, [existingCodeUsers]);
 
+	const reloadUserCodes = async (userId: string) => {
+		try {
+			const fresh = await queryClient.fetchQuery({
+				...appUserCommissionsCodeQueryOptions(),
+				staleTime: 0,
+			});
+			const mapping = fresh.docs.find((entry) => entry.app_user?.id === userId);
+			setUserCodeEntries((previous) => ({
+				...previous,
+				[userId]: (mapping?.code || []).map((entry) => ({
+					id: entry.id || crypto.randomUUID(),
+					code: entry.code,
+					supplier: entry.supplier?.id || "",
+					supplierName: entry.supplier?.name || "",
+				})),
+			}));
+			setUserCodeVersions((previous) => ({
+				...previous,
+				[userId]: mapping?.updatedAt ?? null,
+			}));
+			setSaveErrors((previous) => ({ ...previous, [userId]: "" }));
+			dirtyUsers.current.delete(userId);
+		} catch {
+			toast.error("Impossible de recharger les sous-codes.");
+		}
+	};
+
 	const handleUserAdd = (userId: string) => {
+		dirtyUsers.current.add(userId);
 		if (!userCodeEntries[userId]) {
 			// Initialize with one empty code entry
 			setUserCodeEntries((prev) => ({
@@ -223,10 +246,11 @@ function UsersCodeTab() {
 	}, [userCodeEntries, allUsers, existingCodeUsers, searchQuery]);
 
 	const addCodeEntry = (userId: string) => {
+		dirtyUsers.current.add(userId);
 		setUserCodeEntries((prev) => {
 			const currentEntries = prev[userId] || [];
 			const newEntry = {
-				id: `${userId}-${currentEntries.length}`,
+				id: crypto.randomUUID(),
 				code: "",
 				supplier: "",
 			};
@@ -238,6 +262,7 @@ function UsersCodeTab() {
 	};
 
 	const removeCodeEntry = (userId: string, entryId: string) => {
+		dirtyUsers.current.add(userId);
 		setUserCodeEntries((prev) => {
 			const currentEntries = prev[userId] || [];
 			const updatedEntries = currentEntries.filter(
@@ -257,6 +282,7 @@ function UsersCodeTab() {
 		field: "code" | "supplier",
 		value: string,
 	) => {
+		dirtyUsers.current.add(userId);
 		setUserCodeEntries((prev) => {
 			const currentEntries = prev[userId] || [];
 			return {
@@ -283,13 +309,7 @@ function UsersCodeTab() {
 		const entries = userCodeEntries[userId] || [];
 		const associationId = userAssociationIds[userId];
 
-		// If all codes deleted and association exists, delete it
-		if (entries.length === 0 && associationId) {
-			deleteUserCodeMutation.mutate({ data: associationId });
-			return;
-		}
-
-		if (entries.length === 0) {
+		if (entries.length === 0 && !associationId) {
 			toast.error("Veuillez ajouter au moins un code");
 			return;
 		}
@@ -308,6 +328,7 @@ function UsersCodeTab() {
 		createUserCodeMutation.mutate({
 			data: {
 				app_user: userId,
+				expectedUpdatedAt: userCodeVersions[userId] ?? null,
 				code: entries.flatMap((entry) =>
 					entry.code
 						.split("/")
@@ -345,6 +366,7 @@ function UsersCodeTab() {
 							<Button
 								variant="default"
 								role="combobox"
+								disabled={isOperating}
 								aria-expanded={open}
 								className="w-full justify-between sm:w-auto sm:min-w-[220px]"
 							>
@@ -431,7 +453,8 @@ function UsersCodeTab() {
 												</span>
 											)}
 											<p className="text-red-800 text-sm">
-												Séparez les multiples codes pour un même fournisseur par un "/". Ex : ABC/DEF/GHI
+												Séparez les multiples codes pour un même fournisseur par
+												un "/". Ex : ABC/DEF/GHI
 											</p>
 										</div>
 
@@ -462,125 +485,148 @@ function UsersCodeTab() {
 												</div>
 											) : (
 												<div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-												{(userCodeEntries[userId] || []).map((entry) => (
-													<div
-														key={entry.id}
-														className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:border-blue-300 transition-colors"
-													>
-														<div className="flex items-center gap-3">
-															{/* Code Input */}
-															<div className="flex-1">
-																<Label className="text-xs text-gray-600 mb-1 block">
-																	Code
-																</Label>
-																<Input
-																	placeholder="Ex: ABC123 ou ABC/DEF/GHI"
-																	value={entry.code}
-																	onChange={(e) =>
-																		updateCodeEntry(
-																			userId,
-																			entry.id,
-																			"code",
-																			e.target.value,
-																		)
-																	}
-																	className="h-10"
-																	required
-																/>
-															</div>
+													{(userCodeEntries[userId] || []).map((entry) => (
+														<div
+															key={entry.id}
+															className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:border-blue-300 transition-colors"
+														>
+															<div className="flex items-center gap-3">
+																{/* Code Input */}
+																<div className="flex-1">
+																	<Label className="text-xs text-gray-600 mb-1 block">
+																		Code
+																	</Label>
+																	<Input
+																		placeholder="Ex: ABC123 ou ABC/DEF/GHI"
+																		value={entry.code}
+																		disabled={isOperating}
+																		onChange={(e) =>
+																			updateCodeEntry(
+																				userId,
+																				entry.id,
+																				"code",
+																				e.target.value,
+																			)
+																		}
+																		className="h-10"
+																		required
+																	/>
+																</div>
 
-															{/* Arrow Separator */}
-															<div className="text-gray-400 mt-6">→</div>
+																{/* Arrow Separator */}
+																<div className="text-gray-400 mt-6">→</div>
 
-															{/* Supplier Selection */}
-															<div className="flex-1">
-																<Label className="text-xs text-gray-600 mb-1 block">
-																	Fournisseur
-																</Label>
-																<Popover
-																	open={supplierOpen[`${userId}-${entry.id}`]}
-																	onOpenChange={(open) =>
-																		setSupplierOpen((prev) => ({
-																			...prev,
-																			[`${userId}-${entry.id}`]: open,
-																		}))
+																{/* Supplier Selection */}
+																<div className="flex-1">
+																	<Label className="text-xs text-gray-600 mb-1 block">
+																		Fournisseur
+																	</Label>
+																	<Popover
+																		open={supplierOpen[`${userId}-${entry.id}`]}
+																		onOpenChange={(open) =>
+																			setSupplierOpen((prev) => ({
+																				...prev,
+																				[`${userId}-${entry.id}`]: open,
+																			}))
+																		}
+																	>
+																		<PopoverTrigger asChild>
+																			<Button
+																				variant="outline"
+																				role="combobox"
+																				disabled={isOperating}
+																				className="h-10 w-full justify-between text-sm"
+																			>
+																				{entry.supplier
+																					? allSuppliers.find(
+																							(s) => s.id === entry.supplier,
+																						)?.name ||
+																						entry.supplierName ||
+																						"Fournisseur inconnu"
+																					: "Sélectionner..."}
+																				<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+																			</Button>
+																		</PopoverTrigger>
+																		<PopoverContent className="w-[250px] p-0">
+																			<Command>
+																				<CommandInput placeholder="Rechercher..." />
+																				<CommandEmpty>
+																					Aucun fournisseur trouvé
+																				</CommandEmpty>
+																				<CommandGroup className="max-h-[200px] overflow-auto">
+																					{getAvailableSuppliers(
+																						userId,
+																						entry.id,
+																					).map((supplier) => (
+																						<CommandItem
+																							key={supplier.id}
+																							value={supplier.name}
+																							onSelect={() => {
+																								updateCodeEntry(
+																									userId,
+																									entry.id,
+																									"supplier",
+																									supplier.id,
+																								);
+																								setSupplierOpen((prev) => ({
+																									...prev,
+																									[`${userId}-${entry.id}`]: false,
+																								}));
+																							}}
+																						>
+																							{supplier.name}
+																						</CommandItem>
+																					))}
+																				</CommandGroup>
+																			</Command>
+																		</PopoverContent>
+																	</Popover>
+																</div>
+
+																{/* Remove button */}
+																<Button
+																	onClick={() =>
+																		removeCodeEntry(userId, entry.id)
 																	}
+																	variant="ghost"
+																	size="sm"
+																	className="h-10 w-10 p-0 mt-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+																	title="Supprimer cette association"
+																	disabled={isOperating}
 																>
-																	<PopoverTrigger asChild>
-																		<Button
-																			variant="outline"
-																			role="combobox"
-																			className="h-10 w-full justify-between text-sm"
-																		>
-																			{entry.supplier
-																				? allSuppliers.find(
-																						(s) => s.id === entry.supplier,
-																					)?.name ||
-																					entry.supplierName ||
-																					"Fournisseur inconnu"
-																				: "Sélectionner..."}
-																			<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-																		</Button>
-																	</PopoverTrigger>
-																	<PopoverContent className="w-[250px] p-0">
-																		<Command>
-																			<CommandInput placeholder="Rechercher..." />
-																			<CommandEmpty>
-																				Aucun fournisseur trouvé
-																			</CommandEmpty>
-																			<CommandGroup className="max-h-[200px] overflow-auto">
-																				{getAvailableSuppliers(
-																					userId,
-																					entry.id,
-																				).map((supplier) => (
-																					<CommandItem
-																						key={supplier.id}
-																						value={supplier.name}
-																						onSelect={() => {
-																							updateCodeEntry(
-																								userId,
-																								entry.id,
-																								"supplier",
-																								supplier.id,
-																							);
-																							setSupplierOpen((prev) => ({
-																								...prev,
-																								[`${userId}-${entry.id}`]: false,
-																							}));
-																						}}
-																					>
-																						{supplier.name}
-																					</CommandItem>
-																				))}
-																			</CommandGroup>
-																		</Command>
-																	</PopoverContent>
-																</Popover>
+																	<Trash2 className="h-4 w-4" />
+																</Button>
 															</div>
-
-															{/* Remove button */}
-															<Button
-																onClick={() =>
-																	removeCodeEntry(userId, entry.id)
-																}
-																variant="ghost"
-																size="sm"
-																className="h-10 w-10 p-0 mt-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-																title="Supprimer cette association"
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
 														</div>
-													</div>
-												))}
-											</div>
+													))}
+												</div>
 											)}
 										</div>
 
+										{saveErrors[userId] && (
+											<div
+												role="alert"
+												className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"
+											>
+												<p>{saveErrors[userId]}</p>
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													className="mt-2 h-auto max-w-full whitespace-normal py-2 text-left"
+													onClick={() => void reloadUserCodes(userId)}
+													disabled={isOperating}
+												>
+													<RefreshCw className="size-4" /> Recharger les
+													sous-codes enregistrés
+												</Button>
+											</div>
+										)}
 										{/* Action Buttons */}
 										<div className="flex items-center justify-between gap-3 pt-2 border-t border-blue-300">
 											<Button
 												onClick={() => addCodeEntry(userId)}
+												disabled={isOperating}
 												variant="outline"
 												size="default"
 												className="flex-1 h-10"
@@ -592,7 +638,6 @@ function UsersCodeTab() {
 												onClick={() => saveUserCode(userId)}
 												disabled={
 													createUserCodeMutation.isPending ||
-													deleteUserCodeMutation.isPending ||
 													(codeCount === 0 && !userAssociationIds[userId])
 												}
 												size="default"

@@ -274,15 +274,22 @@ export const createAppUserCommissionCodeQuery = createServerFn({
 	.inputValidator(
 		(data: {
 			app_user: string;
+			expectedUpdatedAt: string | null;
 			code: { code: string; id?: string | null; supplier: Supplier["id"] }[];
 		}) => data,
 	)
 	.handler(async ({ data }) => {
-		const response = await api.post(
-			"/api/app-users-commissions-code/create",
-			data,
-		);
-		return response.data;
+		try {
+			const response = await api.post<{
+				mapping: AppUsersCommissionsCode | null;
+			}>("/api/app-users-commissions-code/create", data);
+			return response.data;
+		} catch (error) {
+			const response = error as { data?: { error?: string } };
+			throw new Error(
+				response.data?.error || "Impossible d'enregistrer les sous-codes.",
+			);
+		}
 	});
 
 export const updateAppUserCommissionCodeQuery = createServerFn({
