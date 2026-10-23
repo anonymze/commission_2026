@@ -23,9 +23,16 @@ formation déclarationd des revenus 9 avril 2026
 
 APPLCIATION MOBILE
 
-
-
 APPLICATION COMMISSIONS
 
+TVA sur les commissions pdfs
 
-fair eun vrai espace perso, avec le sdocuments remplis depuis le dashboard pour les indé, suis era itulisé sur l'app mobile et sur l'outil commission
+champ TVA à trouver sur le PDF
+
+à ajouter dans le tableau commission + import + export excel
+
+TVA 20% ou TVA 8,5% ou autre etc, pas ogligatorie car tous n'ont pas de tva
+
+un même fichier peu avoir de la tva ou non
+
+retrocession de janvier à decembre
