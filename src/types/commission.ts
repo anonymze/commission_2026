@@ -102,6 +102,7 @@ interface SuccessResponseCommission {
       encours: number;
       sheet_lines: Array<{
         rowIndex: number;
+        amountColumn?: number;
         subcode: string;
         amount: number;
         verificationKeyword: string;

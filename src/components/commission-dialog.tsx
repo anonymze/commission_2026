@@ -72,7 +72,9 @@ type ModifiedCommissionSupplier = {
 	production: number;
 	encours: number;
 	sheet_lines: Array<{
+		id: string;
 		rowIndex: number;
+		amountColumn?: number;
 		subcode: string;
 		amount: number;
 		verificationKeyword: string;
@@ -184,7 +186,15 @@ export default function CreateCommissionDialog({
 				return;
 			}
 			setReplacement(null);
-			setModifiedSuppliers(result.data.commissionSuppliers);
+			setModifiedSuppliers(
+				result.data.commissionSuppliers.map((supplier) => ({
+					...supplier,
+					sheet_lines: supplier.sheet_lines.map((line) => ({
+						...line,
+						id: crypto.randomUUID(),
+					})),
+				})),
+			);
 			void queryClient.invalidateQueries({ queryKey: ["commissions"] });
 		},
 		onError: () => toast.error("Impossible de générer la commission"),
@@ -245,35 +255,42 @@ export default function CreateCommissionDialog({
 
 	const handleAmountChange = (
 		supplierIndex: number,
-		lineRowIndex: number,
+		lineIndex: number,
 		newAmount: string,
 	) => {
 		const amount = Number.parseFloat(newAmount) || 0;
-		setModifiedSuppliers((prev) => {
-			const updated = [...prev];
-			const lineIndex = updated[supplierIndex].sheet_lines.findIndex(
-				(line) => line.rowIndex === lineRowIndex,
-			);
-			if (
-				lineIndex !== -1 &&
-				updated[supplierIndex].sheet_lines[lineIndex].source !== "pdf"
-			) {
-				updated[supplierIndex].sheet_lines[lineIndex].amount = amount;
-			}
-			return updated;
-		});
+		if (!Number.isFinite(amount)) return;
+		setModifiedSuppliers((prev) =>
+			prev.map((supplier, index) =>
+				index !== supplierIndex
+					? supplier
+					: {
+							...supplier,
+							sheet_lines: supplier.sheet_lines.map((line, row) => {
+								if (row !== lineIndex || line.source === "pdf") return line;
+								const fullRow = [...line.fullRow];
+								if (line.amountColumn !== undefined)
+									fullRow[line.amountColumn] = amount;
+								return { ...line, amount, fullRow };
+							}),
+						},
+			),
+		);
 	};
 
-	const handleDeleteRow = (supplierIndex: number, lineRowIndex: number) => {
-		setModifiedSuppliers((prev) => {
-			const updated = [...prev];
-			updated[supplierIndex].sheet_lines = updated[
-				supplierIndex
-			].sheet_lines.filter(
-				(line) => line.source === "pdf" || line.rowIndex !== lineRowIndex,
-			);
-			return updated;
-		});
+	const handleDeleteRow = (supplierIndex: number, lineIndex: number) => {
+		setModifiedSuppliers((prev) =>
+			prev.map((supplier, index) =>
+				index !== supplierIndex
+					? supplier
+					: {
+							...supplier,
+							sheet_lines: supplier.sheet_lines.filter(
+								(line, row) => line.source === "pdf" || row !== lineIndex,
+							),
+						},
+			),
+		);
 	};
 
 	// Reset dialog state when closing
@@ -664,15 +681,13 @@ export default function CreateCommissionDialog({
 																</TableRow>
 															</TableHeader>
 															<TableBody>
-																{supplier.sheet_lines.map((line) => {
+																{supplier.sheet_lines.map((line, lineIndex) => {
 																	const isProduction = line.type
 																		? line.type === "production"
 																		: supplier.production > 0 ||
 																			supplier.encours === 0;
 																	return (
-																		<TableRow
-																			key={`${supplier.id}-${line.rowIndex}`}
-																		>
+																		<TableRow key={line.id}>
 																			<TableCell>{line.rowIndex + 1}</TableCell>
 																			<TableCell>
 																				<span
@@ -700,7 +715,7 @@ export default function CreateCommissionDialog({
 																						onChange={(e) =>
 																							handleAmountChange(
 																								supplierIndex,
-																								line.rowIndex,
+																								lineIndex,
 																								e.target.value,
 																							)
 																						}
@@ -721,7 +736,7 @@ export default function CreateCommissionDialog({
 																						onClick={() =>
 																							handleDeleteRow(
 																								supplierIndex,
-																								line.rowIndex,
+																								lineIndex,
 																							)
 																						}
 																					>

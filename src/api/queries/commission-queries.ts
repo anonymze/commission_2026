@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import type {
 	AppUsersCommissionsCode,
 	Commission,
@@ -119,10 +121,11 @@ export const deleteCommissionsQuery = createServerFn({ method: "POST" })
 
 export const getCommissionExportQuery = createServerFn({ method: "POST" })
 	.inputValidator(
-		(data: { commissionId: Commission["id"]; email?: string | undefined }) =>
-			data,
+		z.object({ commissionId: z.uuid(), email: z.email().optional() }),
 	)
 	.handler(async ({ data: { commissionId, email } }) => {
+		const session = await auth.api.getSession({ headers: getRequestHeaders() });
+		if (!session) throw new Error("Veuillez vous reconnecter.");
 		const url = email
 			? `${process.env.API_URL}/api/commissions/export/${commissionId}?email=${encodeURIComponent(email)}`
 			: `${process.env.API_URL}/api/commissions/export/${commissionId}`;
@@ -458,6 +461,7 @@ export const updateCommissionSupplierQuery = createServerFn({ method: "POST" })
 			encours: number;
 			sheet_lines: Array<{
 				rowIndex: number;
+				amountColumn?: number;
 				subcode: string;
 				amount: number;
 				verificationKeyword: string;
