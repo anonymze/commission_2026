@@ -239,7 +239,6 @@ function PdfReviewEditor({
 	const vatAmounts = lines.map((line) =>
 		commissionVatAmount(line.commission_amount, line.vat_rate_pct),
 	);
-	const hasVat = vatAmounts.some((amount) => amount !== null);
 	const allVatKnown = vatAmounts.every((amount) => amount !== null);
 	const vatTotal =
 		vatAmounts.reduce<number>(
@@ -277,7 +276,7 @@ function PdfReviewEditor({
 		Math.abs(Math.round((vatTotal - document.vat_total) * 100)) > 0
 	)
 		vatTotalWarnings.push(
-			`La somme des TVA des lignes est ${money(vatTotal)}, contre ${money(document.vat_total)} pour le relevé. Vous pouvez corriger ou conserver le total indiqué.`,
+			`La somme des TVA des lignes est ${money(vatTotal)}, contre ${money(document.vat_total)} pour le relevé. Vérifiez les taux et les montants des lignes. Vous pouvez enregistrer et valider.`,
 		);
 	function editDocument(patch: Partial<PdfDocument>) {
 		setDocument((previous) => ({
@@ -361,8 +360,8 @@ function PdfReviewEditor({
 					<legend className="mb-3 text-sm font-semibold">
 						Fournisseur et total
 					</legend>
-					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-						<div className="min-w-0 space-y-1.5 sm:col-span-2 lg:col-span-1">
+					<div className="grid gap-3 sm:grid-cols-2">
+						<div className="min-w-0 space-y-1.5">
 							<p className="text-sm">
 								Fournisseur <RequiredMark />
 							</p>
@@ -407,19 +406,19 @@ function PdfReviewEditor({
 								}
 							/>
 						</Field>
-						<Field label="Total TVA du relevé (€)" warnings={vatTotalWarnings}>
-							<PdfAmountInput
-								value={document.vat_total ?? null}
-								onChange={(vat_total) => editDocument({ vat_total })}
-							/>
-						</Field>
 					</div>
 				</fieldset>
 				<div className="space-y-3">
 					<div className="flex flex-wrap items-center justify-between gap-2">
-						<h3 className="text-sm font-semibold">
-							Lignes de commissions ({lines.length})
-						</h3>
+						<div className="flex flex-wrap items-center gap-2">
+							<h3 className="text-sm font-semibold">
+								Lignes de commissions ({lines.length})
+							</h3>
+							<PdfFieldWarning
+								label="les montants de TVA"
+								messages={vatTotalWarnings}
+							/>
+						</div>
 						<span className="text-sm text-muted-foreground">
 							{incomplete
 								? `${incomplete} ligne(s) à compléter`
@@ -600,21 +599,6 @@ function PdfReviewEditor({
 							{document.commission_total === null
 								? "à renseigner"
 								: money(document.commission_total)}
-						</strong>
-					</span>
-				</div>
-				<div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
-					<span>
-						TVA calculée sur les lignes :{" "}
-						<strong>{hasVat ? money(vatTotal) : "non renseignée"}</strong>
-						{hasVat && !allVatKnown ? " (hors lignes sans taux)" : ""}
-					</span>
-					<span>
-						TVA du relevé :{" "}
-						<strong>
-							{document.vat_total == null
-								? "non renseignée"
-								: money(document.vat_total)}
 						</strong>
 					</span>
 				</div>
