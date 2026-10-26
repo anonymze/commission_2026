@@ -10,6 +10,8 @@ import {
 	savePdfReview,
 } from "@/api/queries/pdf-review-queries";
 import { PdfEntitySelect } from "@/components/pdf-entity-select";
+import { PdfFieldWarning } from "@/components/pdf-field-warning";
+import { commissionVatAmount } from "@/lib/commission-tax";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type {
 	PdfDocument,
+	PdfFieldReview,
 	PdfReview,
 	PdfReviewInput,
 	PdfReviewLine,
@@ -233,6 +236,21 @@ function PdfReviewEditor({
 			(sum, line) => sum + Math.round((line.commission_amount ?? 0) * 100),
 			0,
 		) / 100;
+	const vatAmounts = lines.map((line) =>
+		commissionVatAmount(line.commission_amount, line.vat_rate_pct),
+	);
+	const hasVat = vatAmounts.some((amount) => amount !== null);
+	const allVatKnown = vatAmounts.every((amount) => amount !== null);
+	const vatTotal =
+		vatAmounts.reduce<number>(
+			(sum, amount) => sum + Math.round((amount ?? 0) * 100),
+			0,
+		) / 100;
+	const invalidVat = lines.some(
+		(line) =>
+			line.vat_rate_pct != null &&
+			(line.vat_rate_pct < 0 || line.vat_rate_pct > 100),
+	);
 	const incomplete = lines.filter(
 		(line) => !line.appUserId || !line.entry || line.commission_amount === null,
 	).length;
@@ -243,15 +261,59 @@ function PdfReviewEditor({
 		!!supplierId &&
 		lines.length > 0 &&
 		!incomplete &&
+		!invalidVat &&
 		document.commission_total !== null;
+	const messages = (
+		item: { field_reviews?: PdfFieldReview[] },
+		fields: PdfFieldReview["field"][],
+	) =>
+		(item.field_reviews || [])
+			.filter((note) => fields.includes(note.field))
+			.map((note) => note.reason);
+	const vatTotalWarnings = messages(document, ["vat_total", "vat_rate_pct"]);
+	if (
+		allVatKnown &&
+		document.vat_total != null &&
+		Math.abs(Math.round((vatTotal - document.vat_total) * 100)) > 0
+	)
+		vatTotalWarnings.push(
+			`La somme des TVA des lignes est ${money(vatTotal)}, contre ${money(document.vat_total)} pour le relevé. Vous pouvez corriger ou conserver le total indiqué.`,
+		);
 	function editDocument(patch: Partial<PdfDocument>) {
-		setDocument((previous) => ({ ...previous, ...patch }));
+		setDocument((previous) => ({
+			...previous,
+			...patch,
+			commission_total_ttc: null,
+			field_reviews: previous.field_reviews?.filter(
+				(note) =>
+					!Object.keys(patch).includes(note.field) &&
+					note.source !== "calculation",
+			),
+		}));
 		onDirty(true);
 		setError("");
 	}
 	function editLine(id: string, patch: Partial<PdfReviewLine>) {
 		setLines((previous) =>
-			previous.map((line) => (line.id === id ? { ...line, ...patch } : line)),
+			previous.map((line) => {
+				if (line.id !== id) return line;
+				const monetary =
+					"commission_amount" in patch || "vat_rate_pct" in patch;
+				return {
+					...line,
+					...patch,
+					...(monetary ? { vat_amount: null, commission_ttc: null } : {}),
+					field_reviews: line.field_reviews?.filter(
+						(note) =>
+							!Object.keys(patch).includes(note.field) &&
+							!(monetary && note.source === "calculation") &&
+							!(
+								"appUserId" in patch &&
+								["advisor_name", "advisor_code"].includes(note.field)
+							),
+					),
+				};
+			}),
 		);
 		onDirty(true);
 		setError("");
@@ -265,6 +327,12 @@ function PdfReviewEditor({
 			match: { kind: "unmatched", candidates: [] },
 		}));
 		setSupplierId(id);
+		setDocument((previous) => ({
+			...previous,
+			field_reviews: previous.field_reviews?.filter(
+				(note) => note.field !== "supplier_name",
+			),
+		}));
 		setLines(nextLines);
 		setError("");
 		onDirty(true);
@@ -293,11 +361,15 @@ function PdfReviewEditor({
 					<legend className="mb-3 text-sm font-semibold">
 						Fournisseur et total
 					</legend>
-					<div className="grid gap-3 sm:grid-cols-2">
-						<div className="min-w-0 space-y-1.5">
+					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						<div className="min-w-0 space-y-1.5 sm:col-span-2 lg:col-span-1">
 							<p className="text-sm">
 								Fournisseur <RequiredMark />
 							</p>
+							<PdfFieldWarning
+								label="le fournisseur"
+								messages={messages(document, ["supplier_name"])}
+							/>
 							<PdfEntitySelect
 								label="Fournisseur"
 								required
@@ -320,6 +392,7 @@ function PdfReviewEditor({
 						</div>
 						<Field
 							label="Total commissions HT"
+							warnings={messages(document, ["commission_total"])}
 							required
 							error={
 								document.commission_total === null
@@ -332,6 +405,12 @@ function PdfReviewEditor({
 								onChange={(commission_total) =>
 									editDocument({ commission_total })
 								}
+							/>
+						</Field>
+						<Field label="Total TVA du relevé (€)" warnings={vatTotalWarnings}>
+							<PdfAmountInput
+								value={document.vat_total ?? null}
+								onChange={(vat_total) => editDocument({ vat_total })}
 							/>
 						</Field>
 					</div>
@@ -372,7 +451,10 @@ function PdfReviewEditor({
 									<Trash2 className="h-3.5 w-3.5" />
 								</Button>
 								<div className="grid gap-3 sm:grid-cols-2">
-									<Field label="Client">
+									<Field
+										label="Client"
+										warnings={messages(line, ["client_name"])}
+									>
 										<Input
 											value={line.client_name}
 											onChange={(event) =>
@@ -382,6 +464,7 @@ function PdfReviewEditor({
 									</Field>
 									<Field
 										label="Commission HT (€)"
+										warnings={messages(line, ["commission_amount"])}
 										required
 										error={
 											line.commission_amount === null
@@ -396,10 +479,36 @@ function PdfReviewEditor({
 											}
 										/>
 									</Field>
+									<Field
+										label="TVA (%)"
+										warnings={messages(line, ["vat_rate_pct"])}
+										error={
+											line.vat_rate_pct != null &&
+											(line.vat_rate_pct < 0 || line.vat_rate_pct > 100)
+												? "Renseignez un taux entre 0 et 100 %."
+												: undefined
+										}
+									>
+										<PdfAmountInput
+											min={0}
+											max={100}
+											value={line.vat_rate_pct ?? null}
+											onChange={(vat_rate_pct) =>
+												editLine(line.id, { vat_rate_pct })
+											}
+										/>
+									</Field>
 									<div className="min-w-0 space-y-1.5">
 										<p className="text-sm">
 											Indépendant <RequiredMark />
 										</p>
+										<PdfFieldWarning
+											label={`l'indépendant ligne ${index + 1}`}
+											messages={messages(line, [
+												"advisor_name",
+												"advisor_code",
+											])}
+										/>
 										<PdfEntitySelect
 											label={`Indépendant ligne ${index + 1}`}
 											required
@@ -421,6 +530,7 @@ function PdfReviewEditor({
 									</div>
 									<Field
 										label="Type de commission"
+										className="sm:col-span-2"
 										required
 										error={
 											!line.entry
@@ -493,6 +603,21 @@ function PdfReviewEditor({
 						</strong>
 					</span>
 				</div>
+				<div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
+					<span>
+						TVA calculée sur les lignes :{" "}
+						<strong>{hasVat ? money(vatTotal) : "non renseignée"}</strong>
+						{hasVat && !allVatKnown ? " (hors lignes sans taux)" : ""}
+					</span>
+					<span>
+						TVA du relevé :{" "}
+						<strong>
+							{document.vat_total == null
+								? "non renseignée"
+								: money(document.vat_total)}
+						</strong>
+					</span>
+				</div>
 				{document.commission_total !== null && !balanced && (
 					<p
 						role="status"
@@ -546,6 +671,8 @@ function PdfAmountInput({
 	...props
 }: {
 	id?: string;
+	min?: number;
+	max?: number;
 	"aria-required"?: boolean;
 	"aria-invalid"?: boolean;
 	"aria-describedby"?: string;
@@ -576,6 +703,8 @@ function Field({
 	children,
 	required,
 	error,
+	warnings = [],
+	className = "",
 }: {
 	label: string;
 	children: ReactElement<{
@@ -586,20 +715,27 @@ function Field({
 	}>;
 	required?: boolean;
 	error?: string;
+	warnings?: string[];
+	className?: string;
 }) {
 	const id = useId();
 	const errorId = `${id}-error`;
 	return (
-		<div className="flex min-w-0 flex-col gap-1.5 text-sm">
-			<label htmlFor={id}>
-				{label}
-				{required && (
-					<>
-						{" "}
-						<RequiredMark />
-					</>
-				)}
-			</label>
+		<div
+			className={`flex min-w-0 flex-col gap-1.5 text-sm ${className} ${warnings.length && !error ? "[&_input]:border-amber-500 [&_input]:bg-amber-50/40 dark:[&_input]:bg-amber-950/20" : ""}`}
+		>
+			<div className="flex flex-wrap items-center gap-2">
+				<label htmlFor={id}>
+					{label}
+					{required && (
+						<>
+							{" "}
+							<RequiredMark />
+						</>
+					)}
+				</label>
+				<PdfFieldWarning label={label} messages={warnings} />
+			</div>
 			{cloneElement(children, {
 				id,
 				"aria-required": required,

@@ -109,6 +109,9 @@ interface SuccessResponseCommission {
         fullRow: any[];
         type?: "production" | "encours";
         source?: "pdf";
+        sourceFilename?: string;
+        vat_rate_pct?: number | null;
+        vat_amount?: number | null;
       }>;
     }>;
   };

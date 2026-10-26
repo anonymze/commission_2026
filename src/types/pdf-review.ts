@@ -2,6 +2,21 @@ export type PdfMatch = {
 	kind: "exact" | "suggested" | "ambiguous" | "unmatched";
 	candidates: { id: string; label: string; reason: string }[];
 };
+export type PdfFieldReview = {
+	field:
+		| "supplier_name"
+		| "commission_total"
+		| "vat_total"
+		| "vat_rate_pct"
+		| "client_name"
+		| "advisor_name"
+		| "advisor_code"
+		| "product"
+		| "operation_date"
+		| "commission_amount";
+	reason: string;
+	source?: "comparison" | "calculation";
+};
 export type PdfRow = {
 	client_name: string;
 	advisor_name: string;
@@ -9,6 +24,10 @@ export type PdfRow = {
 	product: string;
 	operation_date: string;
 	commission_amount: number | null;
+	vat_rate_pct?: number | null;
+	vat_amount?: number | null;
+	commission_ttc?: number | null;
+	field_reviews?: PdfFieldReview[];
 	commission_labels?: string[];
 	page: number;
 };
@@ -16,6 +35,10 @@ export type PdfDocument = {
 	supplier_name: string;
 	document_reference: string;
 	commission_total: number | null;
+	vat_rate_pct?: number | null;
+	vat_total?: number | null;
+	commission_total_ttc?: number | null;
+	field_reviews?: PdfFieldReview[];
 };
 export type PdfReviewLine = PdfRow & {
 	id: string;

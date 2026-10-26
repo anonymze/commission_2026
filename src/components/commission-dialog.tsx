@@ -13,6 +13,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AssociateBadge } from "@/components/associate-badge";
+import { CommissionSourceBadge } from "@/components/commission-source-badge";
+import { commissionVatAmount } from "@/lib/commission-tax";
 import {
 	Accordion,
 	AccordionContent,
@@ -81,6 +83,9 @@ type ModifiedCommissionSupplier = {
 		fullRow: any[];
 		type?: "production" | "encours";
 		source?: "pdf";
+		sourceFilename?: string;
+		vat_rate_pct?: number | null;
+		vat_amount?: number | null;
 	}>;
 };
 
@@ -638,6 +643,14 @@ export default function CreateCommissionDialog({
 														<div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 text-left">
 															<span className="basis-full break-words font-semibold sm:basis-auto">
 																{supplier.supplier.name}
+																<span className="ml-2 inline-flex gap-1 align-middle">
+																	{supplier.sheet_lines.some(
+																		(line) => line.source === "pdf",
+																	) && <CommissionSourceBadge source="pdf" />}
+																	{supplier.sheet_lines.some(
+																		(line) => line.source !== "pdf",
+																	) && <CommissionSourceBadge source="excel" />}
+																</span>
 															</span>
 															<span className="text-sm text-muted-foreground">
 																Production:{" "}
@@ -674,7 +687,8 @@ export default function CreateCommissionDialog({
 																	<TableHead>Type</TableHead>
 																	<TableHead>Sous-code</TableHead>
 																	<TableHead>Vérification</TableHead>
-																	<TableHead>Montant</TableHead>
+																	<TableHead>Montant HT</TableHead>
+																	<TableHead>TVA</TableHead>
 																	<TableHead className="w-[100px]">
 																		Actions
 																	</TableHead>
@@ -688,7 +702,15 @@ export default function CreateCommissionDialog({
 																			supplier.encours === 0;
 																	return (
 																		<TableRow key={line.id}>
-																			<TableCell>{line.rowIndex + 1}</TableCell>
+																			<TableCell>
+																				<div className="flex items-center gap-2">
+																					{line.rowIndex + 1}
+																					<CommissionSourceBadge
+																						source={line.source}
+																						filename={line.sourceFilename}
+																					/>
+																				</div>
+																			</TableCell>
 																			<TableCell>
 																				<span
 																					className={`font-semibold ${isProduction ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}`}
@@ -723,10 +745,40 @@ export default function CreateCommissionDialog({
 																					/>
 																				)}
 																			</TableCell>
+																			<TableCell className="whitespace-nowrap tabular-nums">
+																				{line.vat_rate_pct == null ? (
+																					<span
+																						className="text-muted-foreground"
+																						title="TVA non renseignée"
+																					>
+																						-
+																					</span>
+																				) : (
+																					<>
+																						<span>
+																							{new Intl.NumberFormat(
+																								"fr-FR",
+																							).format(line.vat_rate_pct)}{" "}
+																							%
+																						</span>
+																						<span className="block text-xs text-muted-foreground">
+																							{new Intl.NumberFormat("fr-FR", {
+																								style: "currency",
+																								currency: "EUR",
+																							}).format(
+																								commissionVatAmount(
+																									line.amount,
+																									line.vat_rate_pct,
+																								) ?? 0,
+																							)}
+																						</span>
+																					</>
+																				)}
+																			</TableCell>
 																			<TableCell>
 																				{line.source === "pdf" ? (
 																					<span className="whitespace-nowrap text-xs text-muted-foreground">
-																						PDF · Lecture seule
+																						Lecture seule
 																					</span>
 																				) : (
 																					<Button
