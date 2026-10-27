@@ -4,134 +4,137 @@ import type { Supplier } from "./supplier";
 import type { AppUser, User } from "./user";
 
 export interface Commission {
-  id: string;
-  archived: boolean;
-  app_user: AppUser["user"];
-  date: string;
-  commission_suppliers: CommissionSupplier[];
-  pdf?: Media | null;
-  structured_product?: boolean | null;
-  title?: string | null;
-  up_front?: number | null;
-  broqueur?: string | null;
-  updatedAt: string;
-  createdAt: string;
+	id: string;
+	archived: boolean;
+	app_user: AppUser["user"];
+	date: string;
+	commission_suppliers: CommissionSupplier[];
+	pdf?: Media | null;
+	structured_product?: boolean | null;
+	title?: string | null;
+	up_front?: number | null;
+	broqueur?: string | null;
+	updatedAt: string;
+	createdAt: string;
 }
 
 export interface CommissionSupplier {
-  id: string;
-  supplier: Supplier;
-  encours: number;
-  production: number;
-  updatedAt: string;
-  createdAt: string;
+	id: string;
+	supplier: Supplier;
+	encours: number;
+	production: number;
+	updatedAt: string;
+	createdAt: string;
 }
 
 export interface AppUsersCommissionsCode {
-  id: string;
-  app_user: User;
-  code: {
-    code: string;
-    id?: string | null;
-    supplier?: Supplier;
-  }[];
-  updatedAt: string;
-  createdAt: string;
+	id: string;
+	app_user: User;
+	code: {
+		code: string;
+		id?: string | null;
+		supplier?: Supplier;
+	}[];
+	updatedAt: string;
+	createdAt: string;
 }
 
 export interface SuppliersCommissionsColumn {
-  id: string;
-  supplier: string | Supplier;
-  production?: {
-    title_row?: string | null;
-    subcode_column?: string | null;
-    verification_column?: string | null;
-    amount_column?: string | null;
-  };
-  encours?: {
-    title_row?: string | null;
-    subcode_column?: string | null;
-    verification_column?: string | null;
-    amount_column?: string | null;
-  };
-  production_encours?: {
-    title_row?: string | null;
-    production_subcode_column?: string | null;
-    production_verification_column?: string | null;
-    production_amount_column?: string | null;
-    encours_subcode_column?: string | null;
-    encours_verification_column?: string | null;
-    encours_amount_column?: string | null;
-  };
-  updatedAt: string;
-  createdAt: string;
+	id: string;
+	supplier: string | Supplier;
+	production?: {
+		title_row?: string | null;
+		subcode_column?: string | null;
+		verification_column?: string | null;
+		amount_column?: string | null;
+	};
+	encours?: {
+		title_row?: string | null;
+		subcode_column?: string | null;
+		verification_column?: string | null;
+		amount_column?: string | null;
+	};
+	production_encours?: {
+		title_row?: string | null;
+		production_subcode_column?: string | null;
+		production_verification_column?: string | null;
+		production_amount_column?: string | null;
+		encours_subcode_column?: string | null;
+		encours_verification_column?: string | null;
+		encours_amount_column?: string | null;
+	};
+	updatedAt: string;
+	createdAt: string;
 }
 
 export interface CommissionImport {
-  id: string;
-  supplier?: string | Supplier | null;
-  files: {
-    file: string | Media;
-    pdfExtraction?: { review?: PdfReview; status?: string } | null;
-    id?: string | null;
-  }[];
-  entry: "production" | "encours" | "production_encours";
-  category?: "ias" | "cif" | null;
-  updatedAt: string;
-  createdAt: string;
+	id: string;
+	supplier?: string | Supplier | null;
+	files: {
+		file: string | Media;
+		pdfExtraction?: { review?: PdfReview; status?: string } | null;
+		id?: string | null;
+	}[];
+	entry: "production" | "encours" | "production_encours";
+	category?: "ias" | "cif" | null;
+	updatedAt: string;
+	createdAt: string;
 }
 
 // Success response
 interface SuccessResponseCommission {
-  status: "success";
-  message: string;
-  data: {
-    commission: {
-      id: string;
-      app_user: string;
-      date: string;
-    };
-    totals: {
-      production: number;
-      encours: number;
-    };
-    commissionSuppliers: Array<{
-      id: string;
-      supplier: Supplier; // supplier ID
-      production: number;
-      encours: number;
-      sheet_lines: Array<{
-        rowIndex: number;
-        amountColumn?: number;
-        subcode: string;
-        amount: number;
-        verificationKeyword: string;
-        fullRow: any[];
-        type?: "production" | "encours";
-        source?: "pdf";
-        sourceFilename?: string;
-        vat_rate_pct?: number | null;
-        vat_amount?: number | null;
-      }>;
-    }>;
-  };
+	status: "success";
+	message: string;
+	data: {
+		commission: {
+			id: string;
+			app_user: string;
+			date: string;
+		};
+		totals: {
+			production: number;
+			encours: number;
+		};
+		commissionSuppliers: Array<{
+			id: string;
+			supplier: Supplier; // supplier ID
+			production: number;
+			encours: number;
+			sheet_lines: Array<{
+				rowIndex: number;
+				amountColumn?: number;
+				subcode: string;
+				amount: number;
+				verificationKeyword: string;
+				fullRow: any[];
+				type?: "production" | "encours";
+				source?: "pdf";
+				sourceFilename?: string;
+				vat_rate_pct?: number | null;
+				vat_amount?: number | null;
+				vatAmountColumn?: number;
+				vatRateColumn?: number;
+				ttcColumn?: number;
+			}>;
+		}>;
+	};
 }
 
 // Error response
 interface ErrorResponseCommission {
-  status: "error";
-  message: string;
-  existingCommissionId?: string | null;
-  code?:
-    | "MONTHLY_COMMISSION_EXISTS"
-    | "NO_USER_CODES"
-    | "NO_IMPORTS"
-    | "VALIDATION_ERRORS"
-    | "NO_COMMISSION_SUPPLIERS"
-    | "INTERNAL_ERROR";
-  errors?: string[];
+	status: "error";
+	message: string;
+	existingCommissionId?: string | null;
+	code?:
+		| "MONTHLY_COMMISSION_EXISTS"
+		| "NO_USER_CODES"
+		| "NO_IMPORTS"
+		| "VALIDATION_ERRORS"
+		| "NO_COMMISSION_SUPPLIERS"
+		| "INTERNAL_ERROR";
+	errors?: string[];
 }
 
 export type ProcessCommissionsResponse =
-  | SuccessResponseCommission
-  | ErrorResponseCommission;
+	| SuccessResponseCommission
+	| ErrorResponseCommission;
