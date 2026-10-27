@@ -86,6 +86,9 @@ type ModifiedCommissionSupplier = {
 		sourceFilename?: string;
 		vat_rate_pct?: number | null;
 		vat_amount?: number | null;
+		vatAmountColumn?: number;
+		vatRateColumn?: number;
+		ttcColumn?: number;
 	}>;
 };
 
@@ -276,7 +279,18 @@ export default function CreateCommissionDialog({
 								const fullRow = [...line.fullRow];
 								if (line.amountColumn !== undefined)
 									fullRow[line.amountColumn] = amount;
-								return { ...line, amount, fullRow };
+								const vat = commissionVatAmount(amount, line.vat_rate_pct);
+								if (line.vatAmountColumn !== undefined)
+									fullRow[line.vatAmountColumn] = vat ?? "";
+								if (line.ttcColumn !== undefined)
+									fullRow[line.ttcColumn] =
+										vat === null ? "" : Number((amount + vat).toFixed(2));
+								return {
+									...line,
+									amount,
+									fullRow,
+									...(line.vat_amount !== undefined ? { vat_amount: vat } : {}),
+								};
 							}),
 						},
 			),
@@ -746,7 +760,11 @@ export default function CreateCommissionDialog({
 																				)}
 																			</TableCell>
 																			<TableCell className="whitespace-nowrap tabular-nums">
-																				{line.vat_rate_pct == null ? (
+																				{commissionVatAmount(
+																					line.amount,
+																					line.vat_rate_pct,
+																					line.vat_amount,
+																				) === null ? (
 																					<span
 																						className="text-muted-foreground"
 																						title="TVA non renseignée"
@@ -755,12 +773,16 @@ export default function CreateCommissionDialog({
 																					</span>
 																				) : (
 																					<>
-																						<span>
-																							{new Intl.NumberFormat(
-																								"fr-FR",
-																							).format(line.vat_rate_pct)}{" "}
-																							%
-																						</span>
+																						{line.vat_rate_pct != null && (
+																							<span>
+																								{new Intl.NumberFormat(
+																									"fr-FR",
+																								).format(
+																									line.vat_rate_pct,
+																								)}{" "}
+																								%
+																							</span>
+																						)}
 																						<span className="block text-xs text-muted-foreground">
 																							{new Intl.NumberFormat("fr-FR", {
 																								style: "currency",
@@ -769,6 +791,7 @@ export default function CreateCommissionDialog({
 																								commissionVatAmount(
 																									line.amount,
 																									line.vat_rate_pct,
+																									line.vat_amount,
 																								) ?? 0,
 																							)}
 																						</span>
