@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AssociateBadge } from "@/components/associate-badge";
 import { CommissionSourceBadge } from "@/components/commission-source-badge";
-import { commissionVatAmount } from "@/lib/commission-tax";
+import { PdfFieldWarning } from "@/components/pdf-field-warning";
 import {
 	Accordion,
 	AccordionContent,
@@ -52,6 +52,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { commissionVatAmount } from "@/lib/commission-tax";
 import {
 	generateCommission,
 	updateCommissionSupplierQuery,
@@ -86,6 +87,8 @@ type ModifiedCommissionSupplier = {
 		sourceFilename?: string;
 		vat_rate_pct?: number | null;
 		vat_amount?: number | null;
+		commission_ttc?: number | null;
+		vat_warnings?: string[];
 		vatAmountColumn?: number;
 		vatRateColumn?: number;
 		ttcColumn?: number;
@@ -279,17 +282,50 @@ export default function CreateCommissionDialog({
 								const fullRow = [...line.fullRow];
 								if (line.amountColumn !== undefined)
 									fullRow[line.amountColumn] = amount;
-								const vat = commissionVatAmount(amount, line.vat_rate_pct);
-								if (line.vatAmountColumn !== undefined)
-									fullRow[line.vatAmountColumn] = vat ?? "";
-								if (line.ttcColumn !== undefined)
-									fullRow[line.ttcColumn] =
-										vat === null ? "" : Number((amount + vat).toFixed(2));
+								const vat = commissionVatAmount({
+									ht: line.amount,
+									vat: line.vat_amount,
+									ttc: line.commission_ttc,
+								});
 								return {
 									...line,
 									amount,
 									fullRow,
-									...(line.vat_amount !== undefined ? { vat_amount: vat } : {}),
+									vat_amount: vat,
+									commission_ttc: null,
+									vat_warnings: undefined,
+								};
+							}),
+						},
+			),
+		);
+	};
+
+	const handleVatChange = (
+		supplierIndex: number,
+		lineIndex: number,
+		value: string,
+	) => {
+		const amount = value.trim() === "" ? null : Number(value);
+		if (amount !== null && !Number.isFinite(amount)) return;
+		const vat = commissionVatAmount({ ht: null, vat: amount });
+		setModifiedSuppliers((previous) =>
+			previous.map((supplier, index) =>
+				index !== supplierIndex
+					? supplier
+					: {
+							...supplier,
+							sheet_lines: supplier.sheet_lines.map((line, row) => {
+								if (row !== lineIndex || line.source === "pdf") return line;
+								const fullRow = [...line.fullRow];
+								if (line.vatAmountColumn !== undefined)
+									fullRow[line.vatAmountColumn] = vat ?? "";
+								return {
+									...line,
+									fullRow,
+									vat_amount: vat,
+									commission_ttc: null,
+									vat_warnings: undefined,
 								};
 							}),
 						},
@@ -714,6 +750,11 @@ export default function CreateCommissionDialog({
 																		? line.type === "production"
 																		: supplier.production > 0 ||
 																			supplier.encours === 0;
+																	const vat = commissionVatAmount({
+																		ht: line.amount,
+																		vat: line.vat_amount,
+																		ttc: line.commission_ttc,
+																	});
 																	return (
 																		<TableRow key={line.id}>
 																			<TableCell>
@@ -760,43 +801,55 @@ export default function CreateCommissionDialog({
 																				)}
 																			</TableCell>
 																			<TableCell className="whitespace-nowrap tabular-nums">
-																				{commissionVatAmount(
-																					line.amount,
-																					line.vat_rate_pct,
-																					line.vat_amount,
-																				) === null ? (
-																					<span
-																						className="text-muted-foreground"
-																						title="TVA non renseignée"
-																					>
-																						-
-																					</span>
-																				) : (
-																					<>
-																						{line.vat_rate_pct != null && (
-																							<span>
-																								{new Intl.NumberFormat(
-																									"fr-FR",
-																								).format(
-																									line.vat_rate_pct,
-																								)}{" "}
-																								%
-																							</span>
-																						)}
-																						<span className="block text-xs text-muted-foreground">
-																							{new Intl.NumberFormat("fr-FR", {
-																								style: "currency",
-																								currency: "EUR",
-																							}).format(
-																								commissionVatAmount(
-																									line.amount,
-																									line.vat_rate_pct,
-																									line.vat_amount,
-																								) ?? 0,
-																							)}
+																				<div className="space-y-1">
+																					{line.vat_rate_pct != null && (
+																						<span className="text-xs text-muted-foreground">
+																							{new Intl.NumberFormat(
+																								"fr-FR",
+																							).format(line.vat_rate_pct)}{" "}
+																							%
 																						</span>
-																					</>
-																				)}
+																					)}
+																					{line.source === "pdf" ? (
+																						<span
+																							className="block"
+																							title={
+																								vat === null
+																									? "TVA non renseignée"
+																									: undefined
+																							}
+																						>
+																							{vat === null
+																								? "-"
+																								: new Intl.NumberFormat(
+																										"fr-FR",
+																										{
+																											style: "currency",
+																											currency: "EUR",
+																										},
+																									).format(vat)}
+																						</span>
+																					) : (
+																						<Input
+																							type="number"
+																							step="0.01"
+																							aria-label={`Montant TVA ligne ${line.rowIndex + 1} ${supplier.supplier.name}`}
+																							value={vat ?? ""}
+																							onChange={(event) =>
+																								handleVatChange(
+																									supplierIndex,
+																									lineIndex,
+																									event.target.value,
+																								)
+																							}
+																							className="w-28"
+																						/>
+																					)}
+																					<PdfFieldWarning
+																						label={`la TVA ligne ${line.rowIndex + 1}`}
+																						messages={line.vat_warnings ?? []}
+																					/>
+																				</div>
 																			</TableCell>
 																			<TableCell>
 																				{line.source === "pdf" ? (

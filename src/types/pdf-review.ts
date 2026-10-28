@@ -8,6 +8,7 @@ export type PdfFieldReview = {
 		| "commission_total"
 		| "vat_total"
 		| "vat_rate_pct"
+		| "vat_amount"
 		| "client_name"
 		| "advisor_name"
 		| "advisor_code"

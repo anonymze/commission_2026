@@ -112,6 +112,8 @@ interface SuccessResponseCommission {
 				sourceFilename?: string;
 				vat_rate_pct?: number | null;
 				vat_amount?: number | null;
+				commission_ttc?: number | null;
+				vat_warnings?: string[];
 				vatAmountColumn?: number;
 				vatRateColumn?: number;
 				ttcColumn?: number;

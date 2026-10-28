@@ -11,7 +11,6 @@ import {
 } from "@/api/queries/pdf-review-queries";
 import { PdfEntitySelect } from "@/components/pdf-entity-select";
 import { PdfFieldWarning } from "@/components/pdf-field-warning";
-import { commissionVatAmount } from "@/lib/commission-tax";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { commissionVatAmount } from "@/lib/commission-tax";
 import type {
 	PdfDocument,
 	PdfFieldReview,
@@ -192,10 +192,15 @@ function PdfReviewEditor({
 		commission_total: roundAmount(initialDocument.commission_total),
 	}));
 	const [supplierId, setSupplierId] = useState(review.supplierId);
-	const [lines, setLines] = useState(() =>
+	const [lines, setLines] = useState<PdfReviewLine[]>(() =>
 		review.lines.map((line) => ({
 			...line,
 			commission_amount: roundAmount(line.commission_amount),
+			vat_amount: commissionVatAmount({
+				ht: line.commission_amount,
+				vat: line.vat_amount,
+				ttc: line.commission_ttc,
+			}),
 		})),
 	);
 	const [error, setError] = useState("");
@@ -237,7 +242,11 @@ function PdfReviewEditor({
 			0,
 		) / 100;
 	const vatAmounts = lines.map((line) =>
-		commissionVatAmount(line.commission_amount, line.vat_rate_pct),
+		commissionVatAmount({
+			ht: line.commission_amount,
+			vat: line.vat_amount,
+			ttc: line.commission_ttc,
+		}),
 	);
 	const allVatKnown = vatAmounts.every((amount) => amount !== null);
 	const vatTotal =
@@ -296,16 +305,16 @@ function PdfReviewEditor({
 		setLines((previous) =>
 			previous.map((line) => {
 				if (line.id !== id) return line;
-				const monetary =
-					"commission_amount" in patch || "vat_rate_pct" in patch;
+				const monetary = "commission_amount" in patch || "vat_amount" in patch;
+				const financial = monetary || "vat_rate_pct" in patch;
 				return {
 					...line,
 					...patch,
-					...(monetary ? { vat_amount: null, commission_ttc: null } : {}),
+					...(monetary ? { commission_ttc: null } : {}),
 					field_reviews: line.field_reviews?.filter(
 						(note) =>
 							!Object.keys(patch).includes(note.field) &&
-							!(monetary && note.source === "calculation") &&
+							!(financial && note.source === "calculation") &&
 							!(
 								"appUserId" in patch &&
 								["advisor_name", "advisor_code"].includes(note.field)
@@ -497,6 +506,17 @@ function PdfReviewEditor({
 											}
 										/>
 									</Field>
+									<Field
+										label="Montant TVA (€)"
+										warnings={messages(line, ["vat_amount"])}
+									>
+										<PdfAmountInput
+											value={line.vat_amount ?? null}
+											onChange={(vat_amount) =>
+												editLine(line.id, { vat_amount })
+											}
+										/>
+									</Field>
 									<div className="min-w-0 space-y-1.5">
 										<p className="text-sm">
 											Indépendant <RequiredMark />
@@ -529,7 +549,6 @@ function PdfReviewEditor({
 									</div>
 									<Field
 										label="Type de commission"
-										className="sm:col-span-2"
 										required
 										error={
 											!line.entry
