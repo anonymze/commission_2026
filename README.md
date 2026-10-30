@@ -25,14 +25,5 @@ APPLCIATION MOBILE
 
 APPLICATION COMMISSIONS
 
-TVA sur les commissions pdfs
-
-champ TVA à trouver sur le PDF
-
-à ajouter dans le tableau commission + import + export excel
-
-TVA 20% ou TVA 8,5% ou autre etc, pas ogligatorie car tous n'ont pas de tva
-
-un même fichier peu avoir de la tva ou non
 
 retrocession de janvier à decembre
