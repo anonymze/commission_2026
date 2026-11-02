@@ -17,7 +17,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	createCommissionImportQuery,
-	deleteCommissionImportQuery,
+	deleteCommissionImportFileQuery,
 	getCommissionsImportQuery,
 } from "@/api/queries/commission-queries";
 import { analyzePdfReview } from "@/api/queries/pdf-review-queries";
@@ -43,6 +43,7 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Popover,
@@ -110,6 +111,7 @@ function RouteComponent() {
 	const [selectedCategory, setSelectedCategory] =
 		useState<ImportCategory | null>(null);
 	const [supplierOpen, setSupplierOpen] = useState(false);
+	const [pdfName, setPdfName] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isDragging, setIsDragging] = useState(false);
 	const [pdfTarget, setPdfTarget] = useState<PdfTarget | null>(null);
@@ -134,11 +136,13 @@ function RouteComponent() {
 			supplier,
 			entry,
 			category,
+			pdfName,
 		}: {
 			files: File[];
 			supplier: string;
 			entry: EntryType;
 			category: ImportCategory;
+			pdfName: string;
 		}) => {
 			const pdf = supplier === PDF_MODE;
 			const result = {
@@ -159,6 +163,7 @@ function RouteComponent() {
 				data.set(pdf ? "mode" : "supplier", pdf ? "pdf" : supplier);
 				data.set("entry", entry);
 				data.set("category", category);
+				if (pdf && pdfName.trim()) data.set("pdfName", pdfName.trim());
 				for (const file of batch) data.append("files", file);
 				try {
 					const uploaded = await createCommissionImportQuery({ data });
@@ -229,14 +234,14 @@ function RouteComponent() {
 		},
 	});
 
-	const deleteImportMutation = useMutation({
-		mutationFn: deleteCommissionImportQuery,
+	const deleteFileMutation = useMutation({
+		mutationFn: deleteCommissionImportFileQuery,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["commissions-import"] });
-			toast.success("Import supprimé avec succès");
+			toast.success("Fichier supprimé");
 		},
 		onError: () => {
-			toast.error("Erreur lors de la suppression de l'import");
+			toast.error("Impossible de supprimer ce fichier. Réessayez.");
 		},
 	});
 
@@ -279,8 +284,7 @@ function RouteComponent() {
 	};
 
 	const handleFileUpload = (files: FileList | null) => {
-		if (createImportMutation.isPending || deleteImportMutation.isPending)
-			return;
+		if (createImportMutation.isPending || deleteFileMutation.isPending) return;
 		if (
 			!selectedSupplier ||
 			!selectedEntry ||
@@ -315,6 +319,7 @@ function RouteComponent() {
 			supplier: selectedSupplier,
 			entry: selectedEntry,
 			category: selectedCategory,
+			pdfName: isPdfMode ? pdfName : "",
 		});
 	};
 
@@ -322,6 +327,7 @@ function RouteComponent() {
 		setSelectedSupplier(supplierId);
 		setSelectedEntry(null);
 		setSelectedCategory(null);
+		setPdfName("");
 		setSupplierOpen(false);
 	};
 	const handleSelectEntry = (entry: EntryType) => {
@@ -329,8 +335,8 @@ function RouteComponent() {
 		setSelectedCategory(null);
 	};
 
-	const handleDeleteImport = (importId: string) => {
-		deleteImportMutation.mutate({ data: importId });
+	const handleDeleteFile = (importId: string, fileId: string) => {
+		deleteFileMutation.mutate({ data: { importId, fileId } });
 	};
 
 	// Group imports by supplier with search filter
@@ -357,6 +363,18 @@ function RouteComponent() {
 			const label = supplierId === PDF_MODE ? "Relevés PDF" : supplier?.name;
 			if (label?.toLowerCase().includes(lowerQuery)) {
 				filtered[supplierId] = imports;
+			} else {
+				const matchingImports = imports.filter((item) =>
+					item.files?.some(
+						(file) =>
+							file.pdfExtraction?.displayName
+								?.toLowerCase()
+								.includes(lowerQuery) ||
+							(typeof file.file !== "string" &&
+								file.file.filename?.toLowerCase().includes(lowerQuery)),
+					),
+				);
+				if (matchingImports.length) filtered[supplierId] = matchingImports;
 			}
 		});
 
@@ -368,7 +386,7 @@ function RouteComponent() {
 	);
 
 	const isUploading = createImportMutation.isPending;
-	const isDeleting = deleteImportMutation.isPending;
+	const isDeleting = deleteFileMutation.isPending;
 	const isOperating = isUploading || isDeleting;
 
 	return (
@@ -519,9 +537,30 @@ function RouteComponent() {
 				)}
 
 				{/* Step 4: File Upload */}
+				{isPdfMode && selectedEntry && selectedCategory && (
+					<div className="space-y-2.5">
+						<Label htmlFor="pdf-import-name">4. Nom du PDF (facultatif)</Label>
+						<Input
+							id="pdf-import-name"
+							value={pdfName}
+							maxLength={150}
+							placeholder="Ex. : France Valley septembre"
+							disabled={isOperating}
+							aria-describedby="pdf-import-name-hint"
+							onChange={(event) => setPdfName(event.target.value)}
+						/>
+						<p
+							id="pdf-import-name-hint"
+							className="text-xs text-muted-foreground"
+						>
+							Ce nom apparaîtra dans Imports et dans l'export. Il s'applique aux
+							PDF de cet envoi.
+						</p>
+					</div>
+				)}
 				{selectedSupplier && selectedEntry && selectedCategory && (
 					<div className="space-y-2.5">
-						<Label>4. Importer le(s) fichier(s)</Label>
+						<Label>{isPdfMode ? "5" : "4"}. Importer le(s) fichier(s)</Label>
 						<fieldset
 							aria-label="Importer des fichiers"
 							onDragOver={(event) => {
@@ -665,100 +704,121 @@ function RouteComponent() {
 																	</Badge>
 																)}
 															</div>
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={() =>
-																	handleDeleteImport(importItem.id)
-																}
-																className="h-7 w-7 p-0 hover:bg-red-50"
-																disabled={isOperating}
-															>
-																<Trash2 className="h-4 w-4 text-red-500" />
-															</Button>
 														</div>
 														{/* Display all files for this import */}
 														<div className="space-y-1">
-															{importItem.files?.map((fileItem) => (
-																<div
-																	key={
-																		fileItem.id ||
-																		(typeof fileItem.file === "string"
-																			? fileItem.file
-																			: fileItem.file.id)
-																	}
-																	className="flex flex-wrap items-center gap-2 text-sm text-foreground"
-																>
-																	<Upload className="h-4 w-4 text-green-600" />
-																	<span className="min-w-0 break-all">
-																		{typeof fileItem.file === "string"
-																			? fileItem.file
-																			: fileItem.file?.filename ||
-																				"Fichier inconnu"}
-																	</span>
-																	{typeof fileItem.file !== "string" &&
-																		(fileItem.file?.mimeType ===
-																			"application/pdf" ||
-																			fileItem.file?.filename
-																				?.toLowerCase()
-																				.endsWith(".pdf")) && (
-																			<>
-																				{fileItem.pdfExtraction?.review
-																					?.status !== "draft" && (
-																					<Badge
-																						variant={
-																							fileItem.pdfExtraction?.review
-																								?.status === "validated"
-																								? "default"
-																								: "secondary"
-																						}
-																					>
-																						{fileItem.pdfExtraction?.review
-																							?.status === "validated"
-																							? "PDF · Validé"
-																							: fileItem.pdfExtraction?.review
-																										?.status === "processing"
-																								? "PDF · Analyse en cours"
-																								: fileItem.pdfExtraction?.review
-																											?.status === "failed"
-																									? "PDF · Analyse à reprendre"
-																									: "PDF · À analyser"}
-																					</Badge>
-																				)}
-																				{fileItem.id && (
-																					<Button
-																						variant={
-																							fileItem.pdfExtraction?.review
-																								?.status === "validated"
-																								? "outline"
-																								: "destructive"
-																						}
-																						size="sm"
-																						className="h-7"
-																						onClick={() =>
-																							setPdfTarget({
-																								importId: importItem.id,
-																								fileId: fileItem.id || "",
-																							})
-																						}
-																					>
-																						{fileItem.pdfExtraction?.review
-																							?.status === "validated"
-																							? "Consulter / modifier"
-																							: "Vérifier"}
-																					</Button>
-																				)}
-																				{fileItem.pdfExtraction?.review
-																					?.status !== "validated" && (
-																					<p className="w-full text-xs text-muted-foreground">
-																						Non utilisé dans les commissions
-																						tant qu’il n’est pas validé.
-																					</p>
-																				)}
-																			</>
+															{importItem.files?.map((fileItem) => {
+																const originalName =
+																	typeof fileItem.file === "string"
+																		? fileItem.file
+																		: fileItem.file.filename ||
+																			"Fichier inconnu";
+																const displayName =
+																	fileItem.pdfExtraction?.displayName ||
+																	originalName;
+																return (
+																	<div
+																		key={
+																			fileItem.id ||
+																			(typeof fileItem.file === "string"
+																				? fileItem.file
+																				: fileItem.file.id)
+																		}
+																		className="relative flex min-h-7 flex-wrap items-center gap-2 pr-9 text-sm text-foreground"
+																	>
+																		<Upload className="h-4 w-4 text-green-600" />
+																		<div className="min-w-0 break-all">
+																			<span>{displayName}</span>
+																			{displayName !== originalName && (
+																				<p className="text-xs text-muted-foreground">
+																					{originalName}
+																				</p>
+																			)}
+																		</div>
+																		{fileItem.id && (
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				className="absolute right-0 top-0 h-7 w-7 p-0 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
+																				aria-label={`Supprimer ${displayName}${displayName !== originalName ? ` (${originalName})` : ""}`}
+																				title="Supprimer ce fichier"
+																				disabled={isOperating}
+																				onClick={() => {
+																					if (fileItem.id)
+																						handleDeleteFile(
+																							importItem.id,
+																							fileItem.id,
+																						);
+																				}}
+																			>
+																				<Trash2 className="h-4 w-4" />
+																			</Button>
 																		)}
-																</div>
-															))}
+																		{typeof fileItem.file !== "string" &&
+																			(fileItem.file?.mimeType ===
+																				"application/pdf" ||
+																				fileItem.file?.filename
+																					?.toLowerCase()
+																					.endsWith(".pdf")) && (
+																				<>
+																					{fileItem.pdfExtraction?.review
+																						?.status !== "draft" && (
+																						<Badge
+																							variant={
+																								fileItem.pdfExtraction?.review
+																									?.status === "validated"
+																									? "default"
+																									: "secondary"
+																							}
+																						>
+																							{fileItem.pdfExtraction?.review
+																								?.status === "validated"
+																								? "PDF · Validé"
+																								: fileItem.pdfExtraction?.review
+																											?.status === "processing"
+																									? "PDF · Analyse en cours"
+																									: fileItem.pdfExtraction
+																												?.review?.status ===
+																											"failed"
+																										? "PDF · Analyse à reprendre"
+																										: "PDF · À analyser"}
+																						</Badge>
+																					)}
+																					{fileItem.id && (
+																						<Button
+																							variant={
+																								fileItem.pdfExtraction?.review
+																									?.status === "validated"
+																									? "outline"
+																									: "destructive"
+																							}
+																							size="sm"
+																							className="h-7"
+																							onClick={() =>
+																								setPdfTarget({
+																									importId: importItem.id,
+																									fileId: fileItem.id || "",
+																								})
+																							}
+																						>
+																							{fileItem.pdfExtraction?.review
+																								?.status === "validated"
+																								? "Consulter / modifier"
+																								: "Vérifier"}
+																						</Button>
+																					)}
+																					{fileItem.pdfExtraction?.review
+																						?.status !== "validated" && (
+																						<p className="w-full text-xs text-muted-foreground">
+																							Non utilisé dans les commissions
+																							tant qu’il n’est pas validé.
+																						</p>
+																					)}
+																				</>
+																			)}
+																	</div>
+																);
+															})}
 														</div>
 													</div>
 												))}

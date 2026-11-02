@@ -438,6 +438,29 @@ export const deleteCommissionImportQuery = createServerFn({ method: "POST" })
 		return response.data;
 	});
 
+export const deleteCommissionImportFileQuery = createServerFn({
+	method: "POST",
+})
+	.inputValidator(
+		z.object({
+			importId: z.uuid(),
+			fileId: z.string().min(1).max(100),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await auth.api.getSession({ headers: getRequestHeaders() });
+		if (!session) throw new Error("Veuillez vous reconnecter.");
+		try {
+			return (
+				await api.delete(
+					`/api/commission-imports/${data.importId}/files/${encodeURIComponent(data.fileId)}`,
+				)
+			).data;
+		} catch (error) {
+			handleApiError(error);
+		}
+	});
+
 export const createCommissionImportQuery = createServerFn({ method: "POST" })
 	.inputValidator((data) => {
 		if (!(data instanceof FormData)) {

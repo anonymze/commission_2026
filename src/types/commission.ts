@@ -72,7 +72,11 @@ export interface CommissionImport {
 	supplier?: string | Supplier | null;
 	files: {
 		file: string | Media;
-		pdfExtraction?: { review?: PdfReview; status?: string } | null;
+		pdfExtraction?: {
+			review?: PdfReview;
+			status?: string;
+			displayName?: string;
+		} | null;
 		id?: string | null;
 	}[];
 	entry: "production" | "encours" | "production_encours";
