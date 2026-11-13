@@ -8,6 +8,7 @@ import {
 	BookAlertIcon,
 	Check,
 	ChevronsUpDown,
+	Download,
 	FileIcon,
 	Loader2,
 	Trash2,
@@ -544,7 +545,7 @@ function RouteComponent() {
 							id="pdf-import-name"
 							value={pdfName}
 							maxLength={150}
-							placeholder="Ex. : France Valley septembre"
+							placeholder="Ex. : France Valley"
 							disabled={isOperating}
 							aria-describedby="pdf-import-name-hint"
 							onChange={(event) => setPdfName(event.target.value)}
@@ -724,7 +725,7 @@ function RouteComponent() {
 																				? fileItem.file
 																				: fileItem.file.id)
 																		}
-																		className="relative flex min-h-7 flex-wrap items-center gap-2 pr-9 text-sm text-foreground"
+																		className="relative flex min-h-7 flex-wrap items-center gap-2 pr-16 text-sm text-foreground"
 																	>
 																		<Upload className="h-4 w-4 text-green-600" />
 																		<div className="min-w-0 break-all">
@@ -735,25 +736,47 @@ function RouteComponent() {
 																				</p>
 																			)}
 																		</div>
-																		{fileItem.id && (
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				className="absolute right-0 top-0 h-7 w-7 p-0 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
-																				aria-label={`Supprimer ${displayName}${displayName !== originalName ? ` (${originalName})` : ""}`}
-																				title="Supprimer ce fichier"
-																				disabled={isOperating}
-																				onClick={() => {
-																					if (fileItem.id)
-																						handleDeleteFile(
-																							importItem.id,
-																							fileItem.id,
-																						);
-																				}}
-																			>
-																				<Trash2 className="h-4 w-4" />
-																			</Button>
-																		)}
+																		<div className="absolute right-0 top-0 flex">
+																			{typeof fileItem.file !== "string" &&
+																				fileItem.file.url && (
+																					<Button
+																						variant="ghost"
+																						size="sm"
+																						className="h-7 w-7 p-0"
+																						asChild
+																					>
+																						<a
+																							href={fileItem.file.url}
+																							download={originalName}
+																							target="_blank"
+																							rel="noreferrer"
+																							aria-label={`Télécharger ${displayName}`}
+																							title="Télécharger ce fichier"
+																						>
+																							<Download className="h-4 w-4" />
+																						</a>
+																					</Button>
+																				)}
+																			{fileItem.id && (
+																				<Button
+																					variant="ghost"
+																					size="sm"
+																					className="h-7 w-7 p-0 text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
+																					aria-label={`Supprimer ${displayName}${displayName !== originalName ? ` (${originalName})` : ""}`}
+																					title="Supprimer ce fichier"
+																					disabled={isOperating}
+																					onClick={() => {
+																						if (fileItem.id)
+																							handleDeleteFile(
+																								importItem.id,
+																								fileItem.id,
+																							);
+																					}}
+																				>
+																					<Trash2 className="h-4 w-4" />
+																				</Button>
+																			)}
+																		</div>
 																		{typeof fileItem.file !== "string" &&
 																			(fileItem.file?.mimeType ===
 																				"application/pdf" ||

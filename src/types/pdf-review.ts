@@ -6,6 +6,7 @@ export type PdfFieldReview = {
 	field:
 		| "supplier_name"
 		| "commission_total"
+		| "commission_total_ttc"
 		| "vat_total"
 		| "vat_rate_pct"
 		| "vat_amount"
@@ -32,6 +33,7 @@ export type PdfRow = {
 	commission_labels?: string[];
 	page: number;
 };
+export type PdfVatMode = "none" | "global" | "page" | "line";
 export type PdfDocument = {
 	supplier_name: string;
 	document_reference: string;
@@ -39,6 +41,8 @@ export type PdfDocument = {
 	vat_rate_pct?: number | null;
 	vat_total?: number | null;
 	commission_total_ttc?: number | null;
+	vat_mode?: PdfVatMode;
+	single_advisor?: boolean;
 	field_reviews?: PdfFieldReview[];
 };
 export type PdfReviewLine = PdfRow & {

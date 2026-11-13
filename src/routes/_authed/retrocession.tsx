@@ -530,6 +530,7 @@ function RetrocessionTab() {
 											type="button"
 											variant="outline"
 											size="sm"
+											className="text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
 											onClick={() => deleteRule(user.id)}
 											disabled={isOperating}
 										>
@@ -669,6 +670,9 @@ function TierEditor({
 									type="button"
 									variant="ghost"
 									size="icon-sm"
+									aria-label="Supprimer ce palier"
+									title="Supprimer ce palier"
+									className="text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400"
 									onClick={() => onRemove(tier.key)}
 									disabled={disabled}
 								>

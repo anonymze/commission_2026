@@ -24,6 +24,7 @@ export function PdfEntitySelect({
 	disabled,
 	required,
 	error,
+	quiet,
 	onChange,
 }: {
 	label: string;
@@ -33,6 +34,7 @@ export function PdfEntitySelect({
 	disabled?: boolean;
 	required?: boolean;
 	error?: string;
+	quiet?: boolean;
 	onChange: (id: string | null) => void;
 }) {
 	const [open, setOpen] = useState(false);
@@ -51,7 +53,9 @@ export function PdfEntitySelect({
 						aria-expanded={open}
 						aria-required={required}
 						aria-invalid={!!error}
-						aria-describedby={error || !value ? descriptionId : undefined}
+						aria-describedby={
+							error || (!value && !quiet) ? descriptionId : undefined
+						}
 						disabled={disabled}
 						className="w-full justify-between font-normal aria-invalid:border-red-600 aria-invalid:bg-red-50 dark:aria-invalid:border-red-400 dark:aria-invalid:bg-red-950/30"
 					>
@@ -124,7 +128,7 @@ export function PdfEntitySelect({
 					</Command>
 				</PopoverContent>
 			</Popover>
-			{(error || !value) && (
+			{(error || (!value && !quiet)) && (
 				<p
 					id={descriptionId}
 					className={`text-xs ${error ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}
