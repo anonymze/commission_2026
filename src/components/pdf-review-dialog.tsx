@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, Plus } from "lucide-react";
+import { ExternalLink, Loader2, Plus, TriangleAlert } from "lucide-react";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -19,7 +19,7 @@ import {
 	roundAmountOrNull,
 } from "@/components/pdf-review-fields";
 import { PdfReviewLineCard } from "@/components/pdf-review-line";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -324,6 +324,7 @@ function PdfReviewEditor({
 	const missingVat = lines.filter((line) => line.vat_amount == null).length;
 	const totalTtc = document.commission_total_ttc ?? null;
 	const balanced = totalTtc !== null && cents(ttcTotal) === cents(totalTtc);
+	const remarks = [...new Set(review.extracted?.warnings ?? [])];
 	const invalidVat = lines.some(
 		(line) =>
 			line.vat_rate_pct != null &&
@@ -543,6 +544,40 @@ function PdfReviewEditor({
 						Vérifiez les données proposées avant de les enregistrer.
 					</p>
 				</div>
+				{((totalTtc !== null && !balanced) || remarks.length > 0) && (
+					<Alert
+						role="status"
+						className="border-amber-500/40 bg-amber-50 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+					>
+						<TriangleAlert />
+						<AlertTitle>Points à vérifier</AlertTitle>
+						<AlertDescription className="text-amber-900 dark:text-amber-200">
+							{totalTtc !== null && !balanced && (
+								<p className="font-medium">
+									La somme des lignes ({money(ttcTotal)} TTC) ne correspond pas
+									au total du relevé ({money(totalTtc)} TTC) : écart de{" "}
+									{money(ttcTotal - totalTtc)}. Vérifiez qu'aucune ligne ne
+									manque ou n'est en double.
+								</p>
+							)}
+							{remarks.length > 0 && (
+								<details open={remarks.length <= 2} className="w-full">
+									<summary className="cursor-pointer underline-offset-4 hover:underline">
+										Remarques de l'analyse ({remarks.length})
+									</summary>
+									<ul className="mt-1 list-disc space-y-1 pl-4">
+										{remarks.map((remark) => (
+											<li key={remark}>{remark}</li>
+										))}
+									</ul>
+								</details>
+							)}
+							<p className="text-xs">
+								Ces points ne bloquent ni l'enregistrement ni la validation.
+							</p>
+						</AlertDescription>
+					</Alert>
+				)}
 				<fieldset
 					disabled={busy}
 					className="min-w-0 space-y-4 rounded-lg border p-3 sm:p-4"
